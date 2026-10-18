@@ -12,18 +12,74 @@ document.addEventListener('DOMContentLoaded', () => {
   window.kaavishPlayer.initYouTubeAPI();
 
   // -------------------------------------------------------------------------
-  // Live Listeners Simulator
+  // Real Live Active Listeners Tracking
   // -------------------------------------------------------------------------
   const liveCountEl = document.getElementById('liveListenerCount');
-  let currentListeners = 1429;
 
-  setInterval(() => {
-    const delta = Math.floor(Math.random() * 5) - 2;
-    currentListeners = Math.max(1280, Math.min(1850, currentListeners + delta));
-    if (liveCountEl) {
-      liveCountEl.textContent = `${currentListeners.toLocaleString()} listening`;
+  // Unique session ID per active browser tab
+  let mySessionId = sessionStorage.getItem('kaavish_live_session');
+  if (!mySessionId) {
+    mySessionId = 'ls_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now();
+    sessionStorage.setItem('kaavish_live_session', mySessionId);
+  }
+
+  function updateLiveListenerUI(count) {
+    if (!liveCountEl) return;
+    const n = Math.max(1, parseInt(count, 10) || 1);
+    liveCountEl.textContent = `${n.toLocaleString()} ${n === 1 ? 'listening' : 'listening'}`;
+  }
+
+  async function sendHeartbeat() {
+    try {
+      const res = await fetch('/api/heartbeat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: mySessionId,
+          isPlaying: window.kaavishPlayer ? window.kaavishPlayer.isPlaying : false
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && typeof data.count === 'number') {
+          updateLiveListenerUI(data.count);
+        }
+      }
+    } catch (err) {
+      // Offline fallback: at least this current user is listening
+      updateLiveListenerUI(1);
     }
-  }, 4500);
+  }
+
+  // Initial heartbeat immediately
+  sendHeartbeat();
+
+  // Periodic heartbeat every 15 seconds to maintain active presence
+  setInterval(sendHeartbeat, 15000);
+
+  // Notify server when tab closes so count decrements immediately
+  window.addEventListener('beforeunload', () => {
+    try {
+      const payload = JSON.stringify({ sessionId: mySessionId });
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon('/api/leave', payload);
+      } else {
+        fetch('/api/leave', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: payload,
+          keepalive: true
+        });
+      }
+    } catch (e) {}
+  });
+
+  // Re-sync immediately when returning to tab
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      sendHeartbeat();
+    }
+  });
 
   // -------------------------------------------------------------------------
   // Theme Switching (With Desktop & Mobile Responsive Versions)

@@ -49,6 +49,24 @@ function saveNotesToDisk(notes) {
   }
 }
 
+// In-memory real active listeners tracker
+const activeListeners = new Map(); // sessionId -> lastSeenTimestamp
+const HEARTBEAT_TIMEOUT_MS = 35000; // 35 seconds inactivity timeout
+
+function pruneStaleListeners() {
+  const now = Date.now();
+  for (const [sessionId, lastSeen] of activeListeners.entries()) {
+    if (now - lastSeen > HEARTBEAT_TIMEOUT_MS) {
+      activeListeners.delete(sessionId);
+    }
+  }
+}
+
+function getActiveListenerCount() {
+  pruneStaleListeners();
+  return activeListeners.size;
+}
+
 const server = http.createServer((req, res) => {
   // CORS & caching headers
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -63,6 +81,61 @@ const server = http.createServer((req, res) => {
   }
 
   let safePath = decodeURI(req.url.split('?')[0]);
+
+  // Live active listeners heartbeat API
+  if (safePath === '/api/heartbeat' || safePath === '/api/listeners') {
+    if (req.method === 'POST') {
+      let body = '';
+      req.on('data', chunk => {
+        body += chunk;
+        if (body.length > 10000) req.destroy();
+      });
+      req.on('end', () => {
+        try {
+          const payload = JSON.parse(body || '{}');
+          const sessionId = (payload.sessionId || '').trim();
+          if (sessionId) {
+            activeListeners.set(sessionId, Date.now());
+          }
+        } catch (err) {}
+        const count = getActiveListenerCount();
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=UTF-8' });
+        res.end(JSON.stringify({ count: Math.max(1, count) }));
+      });
+      return;
+    }
+
+    if (req.method === 'GET') {
+      const count = getActiveListenerCount();
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=UTF-8' });
+      res.end(JSON.stringify({ count: Math.max(1, count) }));
+      return;
+    }
+  }
+
+  // Listener tab closed / left
+  if (safePath === '/api/leave') {
+    if (req.method === 'POST') {
+      let body = '';
+      req.on('data', chunk => {
+        body += chunk;
+        if (body.length > 10000) req.destroy();
+      });
+      req.on('end', () => {
+        try {
+          const payload = JSON.parse(body || '{}');
+          const sessionId = (payload.sessionId || '').trim();
+          if (sessionId && activeListeners.has(sessionId)) {
+            activeListeners.delete(sessionId);
+          }
+        } catch (err) {}
+        const count = getActiveListenerCount();
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=UTF-8' });
+        res.end(JSON.stringify({ count: Math.max(1, count) }));
+      });
+      return;
+    }
+  }
 
   // API endpoint for fan community notes
   if (safePath === '/api/notes') {
