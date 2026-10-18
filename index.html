@@ -7,13 +7,15 @@
   <title>The Kaavish Radio — An Ambient Street-Corner Musical Sanctuary</title>
   <meta name="description"
     content="An ambient street-corner radio website dedicated exclusively to the soulful music of The Kaavish. Listen to Faasle, Bachpan, Nindiya Re, Tere Pyaar Mein alongside soothing rain and vinyl sounds.">
-  <meta name="theme-color" content="#120d0b">
+  <meta name="theme-color" content="#100b08">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Kaavish Radio">
-  <link rel="icon"
-    href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📻</text></svg>">
+  <meta name="apple-mobile-web-app-title" content="TKR">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/svg+xml" href="assets/icons/logo-tkr.svg">
+  <link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png">
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
 
   <!-- Stylesheets -->
   <link rel="stylesheet" href="css/style.css">
@@ -55,6 +57,14 @@
           <span class="live-dot"></span>
           <span id="liveListenerCount">1 listening</span>
         </div>
+        <button class="pill-btn pwa-install-btn" id="btnInstallApp" title="Download & Install The Kaavish Radio (TKR) on your device" style="display: none;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <span>Install App</span>
+        </button>
       </div>
 
       <div class="top-bar-center">
@@ -114,6 +124,19 @@
     <!-- Center Stage: Hero Vintage Title & Atmosphere -->
     <section class="center-stage">
       <div class="hero-title-box">
+        <!-- Download App Button -->
+        <button class="hero-download-btn" id="btnHeroDownload" title="Download & Install The Kaavish Radio (TKR)">
+          <span class="hero-download-icon">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+          </span>
+          <span class="hero-download-text">Download App</span>
+          <span class="hero-download-badge">TKR</span>
+        </button>
+
         <span class="hero-urdu">کاوِش • रुहानी शाम</span>
         <h1 class="hero-main-title">द काविश</h1>
         <div class="hero-sub-title">The Kaavish Radio</div>
@@ -431,6 +454,11 @@
 
       <div class="modal-body">
 
+        <div style="text-align: center; margin: 4px 0 20px;">
+          <img src="assets/icons/logo-tkr.svg" alt="TKR — The Kaavish Radio Logo" style="width: 86px; height: 86px; border-radius: 50%; box-shadow: 0 0 24px rgba(245, 158, 11, 0.4), 0 8px 20px rgba(0,0,0,0.7); border: 2px solid rgba(245, 158, 11, 0.55);" />
+          <div style="font-family: 'Cinzel', serif; font-size: 0.88rem; font-weight: 700; color: #fbbf24; letter-spacing: 2px; margin-top: 8px;">TKR • THE KAAVISH RADIO</div>
+        </div>
+
         <h4 style="color: #fbbf24; font-family: var(--font-devanagari);
         font-size: 1.3rem; margin-bottom: 12px;">
           काविश — Soul in Semi-Classical Harmony
@@ -623,6 +651,41 @@
             <span>Even the cost of a warm cup of chai directly funds maintenance costs and server uptime. Dil se
               shukriya!</span>
           </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Install / Download PWA Modal -->
+  <div class="modal-backdrop" id="installModal">
+    <div class="modal-card" style="max-width: 440px;">
+      <div class="modal-header">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <h3 style="margin:0; font-family:'Cinzel', serif; font-size:1.15rem; letter-spacing:1px; color:#ffffff;">Install The Kaavish Radio</h3>
+        </div>
+        <button class="modal-close-btn" aria-label="Close modal">&times;</button>
+      </div>
+      <div class="modal-body" style="padding: 20px 22px 24px; text-align: center;">
+        <div style="margin: 4px auto 16px;">
+          <img src="assets/icons/logo-tkr.svg" alt="TKR Logo" style="width: 80px; height: 80px; border-radius: 50%; box-shadow: 0 0 25px rgba(245, 158, 11, 0.45); border: 2px solid rgba(245, 158, 11, 0.55);" />
+          <h4 style="font-family:'Cinzel', serif; color:#fbbf24; font-size:1rem; letter-spacing:2px; margin: 10px 0 4px;">TKR — THE KAAVISH RADIO</h4>
+          <p style="font-size:0.84rem; color:#d1c5b4; margin:0; line-height:1.5;">Install onto your home screen or desktop for an immersive full-screen sanctuary with instant offline launch.</p>
+        </div>
+
+        <button class="action-pill-btn" id="btnInstallModalAction" style="width: 100%; padding: 11px 20px; font-size: 0.92rem; margin-bottom: 16px; background: linear-gradient(135deg, #f59e0b, #d97706); color: #120d0b; font-weight: 700; border-radius: var(--radius-pill); border: none; cursor: pointer; box-shadow: 0 4px 16px rgba(245, 158, 11, 0.35);">
+          Install App to Home Screen
+        </button>
+
+        <div style="text-align: left; background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 14px 16px; font-size: 0.82rem; line-height: 1.6; color: #e2d7c9;">
+          <div style="font-weight: 600; color: #fbbf24; margin-bottom: 6px; font-size: 0.84rem;">Quick Installation Guide:</div>
+          <p style="margin: 0 0 6px;">📱 <strong>Android (Chrome):</strong> Tap the install button above, or tap the three dots (⋮) &gt; <em>"Install app"</em> or <em>"Add to Home screen"</em>.</p>
+          <p style="margin: 0 0 6px;">🍏 <strong>iPhone / iPad (Safari):</strong> Tap the <em>Share icon (⎋)</em> at the bottom, then scroll down and tap <em>"Add to Home Screen"</em>.</p>
+          <p style="margin: 0;">💻 <strong>Desktop (Chrome/Edge):</strong> Click the install icon in your address bar or click the button above.</p>
         </div>
       </div>
     </div>

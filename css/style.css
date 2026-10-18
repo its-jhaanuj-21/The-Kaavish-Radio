@@ -222,6 +222,31 @@ body {
   border: 1px solid rgba(245, 158, 11, 0.3);
 }
 
+/* PWA Install Button */
+.pwa-install-btn {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(180, 83, 9, 0.32)) !important;
+  border-color: rgba(245, 158, 11, 0.5) !important;
+  color: #fffbeb !important;
+  font-weight: 600;
+  animation: pulse-install 3s infinite ease-in-out;
+}
+
+.pwa-install-btn:hover {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.42), rgba(180, 83, 9, 0.5)) !important;
+  border-color: #fbbf24 !important;
+  transform: translateY(-1.5px);
+  box-shadow: 0 0 18px rgba(245, 158, 11, 0.35) !important;
+}
+
+@keyframes pulse-install {
+  0%, 100% {
+    box-shadow: 0 0 6px rgba(245, 158, 11, 0.15);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(245, 158, 11, 0.4);
+  }
+}
+
 /* --------------------------------------------------------------------------
    Center Hero Typography & Atmosphere
    -------------------------------------------------------------------------- */
@@ -241,6 +266,72 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
+}
+
+/* Hero Download App Button */
+.hero-download-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(26, 17, 13, 0.78);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  border-radius: var(--radius-pill);
+  padding: 6px 14px 6px 8px;
+  color: #fef3c7;
+  cursor: pointer;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.5), 0 0 15px rgba(245, 158, 11, 0.15);
+  transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  margin-bottom: 12px;
+  z-index: 10;
+}
+
+.hero-download-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f59e0b, #b45309);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #120d0b;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
+  flex-shrink: 0;
+  transition: transform 0.25s ease;
+}
+
+.hero-download-text {
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  color: #fffbeb;
+}
+
+.hero-download-badge {
+  background: rgba(245, 158, 11, 0.22);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  border-radius: 10px;
+  font-size: 0.66rem;
+  padding: 2px 7px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+}
+
+.hero-download-btn:hover {
+  background: rgba(38, 25, 18, 0.92);
+  border-color: #fbbf24;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(245, 158, 11, 0.35);
+}
+
+.hero-download-btn:hover .hero-download-icon {
+  transform: scale(1.12);
+}
+
+.hero-download-btn:active {
+  transform: translateY(0);
 }
 
 .hero-urdu {
@@ -1666,6 +1757,27 @@ body {
     flex-shrink: 0;
     width: 13px;
     height: 13px;
+  }
+
+  .hero-download-btn {
+    padding: 5px 12px 5px 7px;
+    margin-bottom: 8px;
+    margin-top: 4px;
+    gap: 6px;
+  }
+
+  .hero-download-icon {
+    width: 21px;
+    height: 21px;
+  }
+
+  .hero-download-text {
+    font-size: 0.74rem;
+  }
+
+  .hero-download-badge {
+    font-size: 0.62rem;
+    padding: 1px 5px;
   }
 
   .hero-main-title {

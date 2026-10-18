@@ -712,6 +712,67 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 2800);
   }
 
+  // -------------------------------------------------------------------------
+  // Progressive Web App (PWA) Registration & Install Prompt
+  // -------------------------------------------------------------------------
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js')
+        .then((reg) => {
+          console.log('[TKR PWA] Service Worker registered with scope:', reg.scope);
+        })
+        .catch((err) => {
+          console.warn('[TKR PWA] Service Worker registration failed:', err);
+        });
+    });
+  }
+
+  let deferredInstallPrompt = null;
+  const installBtn = document.getElementById('btnInstallApp');
+  const heroDownloadBtn = document.getElementById('btnHeroDownload');
+  const modalInstallBtn = document.getElementById('btnInstallModalAction');
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    if (installBtn) {
+      installBtn.style.display = 'inline-flex';
+    }
+  });
+
+  async function triggerInstallFlow() {
+    if (deferredInstallPrompt) {
+      deferredInstallPrompt.prompt();
+      try {
+        const { outcome } = await deferredInstallPrompt.userChoice;
+        if (outcome === 'accepted') {
+          showToast('✨ Thank you for downloading The Kaavish Radio (TKR)!');
+          if (installBtn) installBtn.style.display = 'none';
+        }
+      } catch (err) {}
+      deferredInstallPrompt = null;
+      closeModal('installModal');
+    } else {
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+      if (isStandalone) {
+        showToast('✨ The Kaavish Radio is already installed on your device!');
+      } else {
+        openModal('installModal');
+      }
+    }
+  }
+
+  installBtn?.addEventListener('click', triggerInstallFlow);
+  heroDownloadBtn?.addEventListener('click', triggerInstallFlow);
+  modalInstallBtn?.addEventListener('click', triggerInstallFlow);
+
+  window.addEventListener('appinstalled', () => {
+    deferredInstallPrompt = null;
+    if (installBtn) installBtn.style.display = 'none';
+    closeModal('installModal');
+    showToast('✨ The Kaavish Radio (TKR) installed successfully!');
+  });
+
   // Auto-prompt on first click to unlock AudioContext
   document.body.addEventListener('click', () => {
     window.ambientEngine.ensureContext();
