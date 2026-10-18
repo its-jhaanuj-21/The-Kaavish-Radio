@@ -18,6 +18,7 @@ const PRECACHE_ASSETS = [
   '/assets/icons/icon-192.png',
   '/assets/icons/icon-512.png',
   '/assets/icons/apple-touch-icon.png',
+  '/assets/icons/og-preview.png',
   '/assets/images/support_qr.jpeg',
   '/assets/images/Img1.png',
   '/assets/images/Img1_mob.png',

@@ -508,17 +508,48 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Share button
   document.getElementById('btnShare')?.addEventListener('click', async () => {
-    const shareData = {
-      title: 'The Kaavish Radio',
-      text: 'Immerse in an ambient street-corner sanctuary dedicated to the timeless music of The Kaavish.',
-      url: window.location.href
-    };
+    const shareTitle = 'The Kaavish Radio (TKR) — A Soulful Courtyard of Timeless Harmonies';
+    const shareText = '📻✨ The Kaavish Radio (TKR) — A Soulful Courtyard of Timeless Harmonies\n\n' +
+      'Step into an ambient, ad-free musical sanctuary dedicated to the poetry and timeless melodies of The Kaavish. ' +
+      'Listen to Faasle, Bachpan, Nindiya Re alongside soothing rain and vintage vinyl crackle.\n\n' +
+      '🔗 Listen live:\n';
+    const shareUrl = window.location.href;
+    const fullSharePayload = `${shareText}${shareUrl}`;
+
     if (navigator.share) {
       try {
-        await navigator.share(shareData);
-      } catch(err) {}
-    } else {
-      navigator.clipboard.writeText(window.location.href);
+        const shareOptions = {
+          title: shareTitle,
+          text: shareText,
+          url: shareUrl
+        };
+
+        // Attach TKR logo image if supported by the browser's share sheet
+        try {
+          const imgRes = await fetch('assets/icons/icon-512.png');
+          if (imgRes.ok) {
+            const blob = await imgRes.blob();
+            const file = new File([blob], 'the-kaavish-radio-tkr.png', { type: 'image/png' });
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+              shareOptions.files = [file];
+            }
+          }
+        } catch (e) {}
+
+        await navigator.share(shareOptions);
+        showToast('✨ Thank you for sharing The Kaavish Radio!');
+        return;
+      } catch (err) {
+        if (err.name === 'AbortError') return;
+      }
+    }
+
+    // Fallback: Copy rich message with link to clipboard
+    try {
+      await navigator.clipboard.writeText(fullSharePayload);
+      showToast('🔗 Beautiful invitation & link copied to clipboard!');
+    } catch (e) {
+      navigator.clipboard.writeText(shareUrl);
       showToast('🔗 Radio link copied to clipboard!');
     }
   });

@@ -1,7 +1,7 @@
 {
   "name": "the-kaavish-radio",
   "version": "1.0.0",
-  "description": "An ambient street-corner radio website dedicated to the soulful music of The Kaavish.",
+  "description": "A soulful courtyard and musical sanctuary dedicated to the timeless music of The Kaavish.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
