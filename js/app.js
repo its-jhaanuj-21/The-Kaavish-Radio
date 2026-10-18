@@ -400,7 +400,6 @@ document.addEventListener('DOMContentLoaded', () => {
     searchClearBtn.addEventListener('click', () => {
       if (searchInput) {
         searchInput.value = '';
-        searchInput.focus();
       }
       searchClearBtn.style.display = 'none';
       renderPlaylist('');
@@ -410,16 +409,14 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initial render
   renderPlaylist('');
 
-  // Auto-focus search input when opening playlist modal
+  // Reset playlist to full list on open without activating search focus
   document.getElementById('btnOpenPlaylist')?.addEventListener('click', () => {
-    setTimeout(() => {
-      if (searchInput) {
-        searchInput.value = '';
-        if (searchClearBtn) searchClearBtn.style.display = 'none';
-        renderPlaylist('');
-        searchInput.focus();
-      }
-    }, 150);
+    if (searchInput) {
+      searchInput.value = '';
+      if (searchClearBtn) searchClearBtn.style.display = 'none';
+      renderPlaylist('');
+      searchInput.blur();
+    }
   });
 
   window.addEventListener('trackchange', (e) => {

@@ -1156,7 +1156,7 @@ class KaavishMusicPlayer {
 
     if (isPlaying) {
       if (this.bgAudio) {
-        this.bgAudio.play().catch(() => {});
+        this.bgAudio.play().catch(() => { });
       }
       if ('mediaSession' in navigator) {
         navigator.mediaSession.playbackState = 'playing';
