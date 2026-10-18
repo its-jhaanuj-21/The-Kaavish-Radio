@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>The Kaavish Radio — An Ambient Street-Corner Musical Sanctuary</title>
+  <meta name="description"
+    content="An ambient street-corner radio website dedicated exclusively to the soulful music of The Kaavish. Listen to Faasle, Bachpan, Nindiya Re, Tere Pyaar Mein alongside soothing rain and vinyl sounds.">
+  <meta name="theme-color" content="#120d0b">
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📻</text></svg>">
+
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+  <!-- ========================================================================
+       Background Scenes & Atmosphere
+       ======================================================================== -->
+  <div class="scene-container" id="sceneContainer">
+    <div id="sceneTheme_0" class="scene-bg active"></div>
+    <div id="sceneTheme_1" class="scene-bg"></div>
+    <div id="sceneTheme_2" class="scene-bg"></div>
+    <div id="sceneTheme_3" class="scene-bg"></div>
+    <div id="sceneTheme_4" class="scene-bg"></div>
+    <div id="sceneTheme_5" class="scene-bg"></div>
+
+    <div class="scene-overlay"></div>
+    <div class="film-grain"></div>
+    <canvas id="rainCanvas"></canvas>
+  </div>
+
+  <!-- Invisible YouTube IFrame Host -->
+  <div id="ytPlayerHost"></div>
+
+  <!-- Toast Notification -->
+  <div id="toastNotice" class="toast-notice">Welcome to The Kaavish Radio</div>
+
+  <!-- ========================================================================
+       App Viewport UI
+       ======================================================================== -->
+  <main class="app-viewport">
+
+    <!-- Top Navigation Bar -->
+    <header class="top-bar">
+      <div class="top-bar-left">
+        <div class="pill-btn" id="liveListenersPill" title="Live Listeners Worldwide">
+          <span class="live-dot"></span>
+          <span id="liveListenerCount">1,429 listening</span>
+        </div>
+      </div>
+
+      <div class="top-bar-center">
+        <button class="pill-btn" id="themeCycleBtn" title="Switch ambient scene">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path
+              d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41M12 7a5 5 0 100 10 5 5 0 000-10z" />
+          </svg>
+          <span>Change Theme</span>
+        </button>
+      </div>
+
+      <div class="top-bar-right">
+        <button class="pill-btn" id="btnOpenPlaylist" title="View all Kaavish tracks">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 18V5l12-2v13M9 9l12-2M6 18a3 3 0 11-6 0 3 3 0 016 0zm12-2a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          <span>Songs</span>
+        </button>
+        <button class="pill-btn" id="btnOpenLyrics" title="Read lyrics & poetry">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 19.5A2.5 2.5 0 016.5 17H20M4 4.5A2.5 2.5 0 016.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15z" />
+          </svg>
+          <span>Lyrics</span>
+        </button>
+        <button class="pill-btn" id="btnOpenMixer" title="Ambient Sound Mixer">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6" />
+          </svg>
+          <span>Mixer</span>
+        </button>
+        <button class="pill-btn" id="btnOpenNotes" title="Fan thoughts and poetry notes">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+          </svg>
+          <span>Notes</span>
+        </button>
+        <button class="pill-btn" id="btnOpenMobileQR" title="Open on your Phone">
+          <span>📱 Phone</span>
+        </button>
+        <button class="pill-btn" id="btnOpenAbout" title="About The Kaavish">
+          <span>About</span>
+        </button>
+        <button class="pill-btn" id="btnShare" title="Share with friends">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13" />
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Center Stage: Hero Vintage Title & Atmosphere -->
+    <section class="center-stage">
+      <div class="hero-title-box">
+        <span class="hero-urdu">کاوِش • रुहानी शाम</span>
+        <h1 class="hero-main-title">द काविश</h1>
+        <div class="hero-sub-title">The Kaavish Radio</div>
+        <p class="hero-quote" id="heroQuote">“फासले ना रहे... कोई गिला ना रहे”</p>
+
+        <!-- Deluxe Saloon Quick Ambient Toggles -->
+        <div class="quick-ambient-bar">
+          <button class="ambient-chip" id="chipBaarish" title="Toggle gentle monsoon rain sound">
+            <span class="chip-dot"></span>
+            <span>🌧️ Baarish?</span>
+          </button>
+          <button class="ambient-chip" id="chipVinyl" title="Toggle vintage vinyl record crackle">
+            <span class="chip-dot"></span>
+            <span>📻 Vinyl Crackle?</span>
+          </button>
+          <button class="ambient-chip" id="chipCrickets" title="Toggle peaceful night crickets">
+            <span class="chip-dot"></span>
+            <span>🌙 Crickets?</span>
+          </button>
+          <button class="ambient-chip" id="chipThunder" title="Toggle distant monsoon thunder">
+            <span class="chip-dot"></span>
+            <span>⛈️ Baadal?</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Bottom Floating Dock: Mini Banner + Radio Player -->
+    <footer class="bottom-dock">
+
+      <!-- Deluxe Saloon style mini promo banner -->
+      <div class="app-mini-banner" id="miniBanner">
+        <div class="mini-banner-left">
+          <div class="mini-banner-icon">📻</div>
+          <div class="mini-banner-text">
+            <strong>The Kaavish Radio • Gunkali & Coke Studio</strong>
+            <span>One tap soulful ambient listening anywhere</span>
+          </div>
+        </div>
+        <div class="mini-banner-actions">
+          <button class="action-pill-btn" onclick="openModal('playlistModal')">Explore Songs</button>
+          <button class="close-banner-btn" id="closeBannerBtn" title="Dismiss banner">&times;</button>
+        </div>
+      </div>
+
+      <!-- Master Audio Player Bar -->
+      <div class="radio-player-bar">
+
+        <!-- Track Thumbnail & Title -->
+        <div class="player-track-info">
+          <div class="vinyl-thumb" id="vinylThumb" title="The Kaavish Master Recording">
+            <div class="vinyl-groove-rings"></div>
+            <img id="vinylCoverImg" class="vinyl-cover-art" src="https://img.youtube.com/vi/9sekgEXGm-E/mqdefault.jpg"
+              alt="Cover" onerror="this.src='assets/images/Img1.png'">
+            <div class="vinyl-center-dot"></div>
+          </div>
+          <div class="track-text-meta">
+            <div class="track-title" id="currentTitle">Faasle</div>
+            <div class="track-artist" id="currentArtist">The Kaavish & Quratulain Balouch • Coke Studio Season 10</div>
+          </div>
+        </div>
+
+        <!-- Middle Timeline / Seek Bar -->
+        <div class="player-timeline-box">
+          <span class="time-stamp" id="timeCurrent">0:00</span>
+          <div class="progress-track" id="progressTrack" title="Seek track">
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
+          <span class="time-stamp" id="timeTotal">4:18</span>
+        </div>
+
+        <!-- Playback Controls -->
+        <div class="player-controls">
+          <button class="ctrl-btn" id="prevTrackBtn" title="Previous Track (Ctrl+Left)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
+            </svg>
+          </button>
+
+          <button class="ctrl-btn play-master-btn" id="playMasterBtn" title="Play / Pause (Spacebar)">
+            <span id="playIcon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            </span>
+          </button>
+
+          <button class="ctrl-btn" id="nextTrackBtn" title="Next Track (Ctrl+Right)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Volume Control -->
+        <div class="player-volume-box">
+          <button class="ctrl-btn" id="volumeToggleBtn" title="Mute / Unmute"
+            style="width: 28px; height: 28px; font-size: 0.95rem;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path
+                d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" />
+            </svg>
+          </button>
+          <input type="range" class="volume-slider" id="masterVolumeSlider" min="0" max="100" value="80"
+            title="Player Volume">
+        </div>
+
+      </div>
+
+      <div class="credits-footer">
+        A love letter to the timeless semi-classical harmonies of <strong>Jaffer Zaidi & Maaz Maudood</strong>
+      </div>
+
+    </footer>
+
+  </main>
+
+  <!-- ========================================================================
+       Modals
+       ======================================================================== -->
+
+  <!-- Theme Selector Modal -->
+  <div class="modal-backdrop" id="themeModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>🎨 Select Ambient Setting</h3>
+        <button class="modal-close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="margin-bottom: 14px; font-size: 0.85rem; color: #a8a29e;">
+          Choose an ambient visual backdrop for your listening session:
+        </p>
+        <div class="themes-grid" id="themesGrid">
+          <!-- Populated dynamically with Kaavish Img1, Img2, Img3 and classic themes -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ambient Soundscape Mixer Modal -->
+  <div class="modal-backdrop" id="mixerModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>🎚️ Ambient Soundscape Mixer</h3>
+        <button class="modal-close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="margin-bottom: 16px; font-size: 0.85rem; color: #a8a29e;">
+          Mix real-time soothing environmental sounds into the music:
+        </p>
+
+        <div class="mixer-item">
+          <div class="mixer-info">
+            <span class="mixer-icon">🌧️</span>
+            <div>
+              <div class="mixer-title">Baarish (Rain)</div>
+              <div class="mixer-desc">Gentle monsoon drops</div>
+            </div>
+          </div>
+          <div class="mixer-controls">
+            <input type="range" class="mixer-slider" id="mixerRain" min="0" max="100" value="0">
+          </div>
+        </div>
+
+        <div class="mixer-item">
+          <div class="mixer-info">
+            <span class="mixer-icon">📻</span>
+            <div>
+              <div class="mixer-title">Vinyl Crackle</div>
+              <div class="mixer-desc">Warm 1970s gramophone</div>
+            </div>
+          </div>
+          <div class="mixer-controls">
+            <input type="range" class="mixer-slider" id="mixerVinyl" min="0" max="100" value="0">
+          </div>
+        </div>
+
+        <div class="mixer-item">
+          <div class="mixer-info">
+            <span class="mixer-icon">🌙</span>
+            <div>
+              <div class="mixer-title">Night Crickets</div>
+              <div class="mixer-desc">Calm summer breeze</div>
+            </div>
+          </div>
+          <div class="mixer-controls">
+            <input type="range" class="mixer-slider" id="mixerCrickets" min="0" max="100" value="0">
+          </div>
+        </div>
+
+        <div class="mixer-item">
+          <div class="mixer-info">
+            <span class="mixer-icon">⛈️</span>
+            <div>
+              <div class="mixer-title">Distant Thunder</div>
+              <div class="mixer-desc">Deep rolling monsoon rumble</div>
+            </div>
+          </div>
+          <div class="mixer-controls">
+            <input type="range" class="mixer-slider" id="mixerThunder" min="0" max="100" value="0">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- All Kaavish Songs / Playlist Modal -->
+  <div class="modal-backdrop" id="playlistModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>🎵 The Kaavish Discography</h3>
+        <button class="modal-close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="song-search-container">
+          <div class="song-search-box">
+            <svg class="song-search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="songSearchInput" class="song-search-input"
+              placeholder="Search by title, album, lyrics, or artist..." autocomplete="off" spellcheck="false">
+            <button type="button" id="songSearchClear" class="song-search-clear" title="Clear search" aria-label="Clear search">&times;</button>
+          </div>
+          <div class="song-search-meta">
+            <span id="songCountIndicator">All songs</span>
+          </div>
+        </div>
+
+        <div id="playlistRows" class="playlist-rows-container">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lyrics Modal -->
+  <div class="modal-backdrop" id="lyricsModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="lyricsModalTitle">Faasle — Lyrics</h3>
+        <button class="modal-close-btn">&times;</button>
+      </div>
+      <div class="modal-body" id="lyricsModalBody">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Fan Notes & Community Modal -->
+  <div class="modal-backdrop" id="notesModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>💬 Listener Notes & Shayari</h3>
+        <button class="modal-close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="fan-notes-list" id="fanNotesList">
+          <!-- Populated by JS -->
+        </div>
+
+        <form id="fanNoteForm" class="fan-note-form">
+          <div class="note-form-grid">
+            <div class="note-input-group">
+              <label for="fanAuthorInput" class="note-label">Your Name or City</label>
+              <input type="text" id="fanAuthorInput" class="note-input author-input"
+                placeholder="e.g. Aiman, Lahore or Rohan, Mumbai" maxlength="50" required autocomplete="name">
+            </div>
+            <div class="note-input-group">
+              <label for="fanNoteInput" class="note-label">Your Reflection or Line</label>
+              <div class="note-input-row">
+                <input type="text" id="fanNoteInput" class="note-input message-input"
+                  placeholder="Leave a reflection, memory, or favourite lyrics..." maxlength="280" required autocomplete="off">
+                <button type="submit" class="action-pill-btn" id="fanNoteSubmitBtn">
+                  <span>Post</span>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mobile QR Code Modal -->
+  <div class="modal-backdrop" id="mobileQRModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>📱 Play on your Mobile Phone</h3>
+        <button class="modal-close-btn">&times;</button>
+      </div>
+      <div class="modal-body" style="text-align: center;">
+        <p style="margin-bottom: 16px; font-size: 0.88rem; color: #a8a29e;">
+          Connect your phone to your Wi-Fi and scan this QR code with your phone camera:
+        </p>
+
+        <div
+          style="display: inline-block; padding: 12px; background: #120d0b; border: 2px solid #f59e0b; border-radius: 16px; box-shadow: 0 0 25px rgba(245, 158, 11, 0.35); margin-bottom: 16px;">
+          <img
+            src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=http://192.168.1.4:8080&color=f59e0b&bgcolor=120d0b"
+            alt="QR Code to open on mobile" width="200" height="200" style="display: block; border-radius: 8px;">
+        </div>
+
+        <div style="margin-bottom: 14px;">
+          <span style="font-size: 0.78rem; color: #78716c; display: block; margin-bottom: 4px;">Or open this link on
+            your phone's browser:</span>
+          <div
+            style="background: rgba(0,0,0,0.5); padding: 8px 14px; border-radius: 9999px; font-family: monospace; font-size: 1rem; color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); display: inline-flex; align-items: center; gap: 8px;">
+            <span>http://192.168.1.4:8080</span>
+          </div>
+        </div>
+
+        <div
+          style="background: rgba(255,255,255,0.04); border-radius: 12px; padding: 12px; font-size: 0.78rem; color: #d1c5b4; text-align: left; line-height: 1.6;">
+          <strong style="color: #fbbf24;">💡 Pro Tips:</strong><br>
+          • <strong>iOS Safari:</strong> Tap the Share button &gt; <em>"Add to Home Screen"</em> to enjoy it fullscreen
+          without browser bars!<br>
+          • <strong>Android Chrome:</strong> Tap three dots &gt; <em>"Add to Home screen" / "Install App"</em>.<br>
+          • Make sure your phone is connected to the same Wi-Fi network as this computer.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- About The Kaavish Modal -->
+  <div class="modal-backdrop" id="aboutModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>About The Kaavish</h3>
+        <button class="modal-close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <h4 style="color: #fbbf24; font-family: var(--font-devanagari); font-size: 1.3rem; margin-bottom: 8px;">काविश —
+          Soul in Semi-Classical Harmony</h4>
+        <p style="margin-bottom: 14px;">
+          Formed in 1998 by <strong>Jaffer Zaidi</strong> (lead vocals, acoustic piano/harmonium) and <strong>Maaz
+            Maudood</strong> (backing vocals, acoustic guitar), <strong>The Kaavish</strong> represents one of the most
+          sublime and poignant chapters in contemporary South Asian semi-classical music.
+        </p>
+        <p style="margin-bottom: 14px;">
+          Their debut studio album <strong><em>Gunkali</em></strong> (named after the morning raag) introduced an
+          introspective, acoustic sound world that bridges classical Indian raags with Western piano ballads. With
+          evergreen tracks like <em>Faasle</em>, <em>Bachpan</em>, <em>Nindiya Re</em>, and <em>Tere Pyaar Mein</em>,
+          their compositions linger like a quiet cup of chai on a rainy afternoon.
+        </p>
+        <p style="margin-bottom: 14px;">
+          Inspired by the aesthetic atmosphere of <strong>Deluxe Saloon</strong> (deluxesalon.in), this web app is a
+          non-commercial tribute radio created for fans who seek sanctuary in the soothing melodies of Kaavish.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/ambient-audio.js"></script>
+  <script src="js/rain-effect.js"></script>
+  <script src="js/player.js"></script>
+  <script src="js/app.js"></script>
+</body>
+
+</html>

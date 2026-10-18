@@ -1,0 +1,21 @@
+{
+  "name": "the-kaavish-radio",
+  "version": "1.0.0",
+  "description": "An ambient street-corner radio website dedicated to the soulful music of The Kaavish.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [
+    "kaavish",
+    "radio",
+    "ambient",
+    "music",
+    "coke-studio"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
