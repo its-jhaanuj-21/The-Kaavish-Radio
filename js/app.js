@@ -481,6 +481,24 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btnOpenLyrics')?.addEventListener('click', () => openModal('lyricsModal'));
   document.getElementById('btnOpenAbout')?.addEventListener('click', () => openModal('aboutModal'));
   document.getElementById('btnOpenNotes')?.addEventListener('click', () => openModal('notesModal'));
+  document.getElementById('btnOpenSupport')?.addEventListener('click', () => openModal('supportModal'));
+
+  // Support Modal UPI Copy
+  const copyUpiBtn = document.getElementById('copyUpiBtn');
+  const copyUpiText = document.getElementById('copyUpiText');
+  copyUpiBtn?.addEventListener('click', async () => {
+    const upiId = document.getElementById('supportUpiId')?.textContent?.trim() || 'anujjha196@naviaxis';
+    try {
+      await navigator.clipboard.writeText(upiId);
+      if (copyUpiText) copyUpiText.textContent = 'Copied!';
+      showToast('✓ UPI ID copied: ' + upiId);
+      setTimeout(() => {
+        if (copyUpiText) copyUpiText.textContent = 'Copy';
+      }, 2500);
+    } catch (err) {
+      showToast('UPI ID: ' + upiId);
+    }
+  });
 
   // Mini Banner close
   document.getElementById('closeBannerBtn')?.addEventListener('click', () => {

@@ -1375,6 +1375,205 @@ body {
   transform: translateX(-50%) translateY(0);
 }
 
+/* --------------------------------------------------------------------------
+   Support Sanctuary Button & Contribution Modal
+   -------------------------------------------------------------------------- */
+.support-pill-btn {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.22), rgba(180, 83, 9, 0.28)) !important;
+  border-color: rgba(245, 158, 11, 0.45) !important;
+  color: #fef3c7 !important;
+  font-weight: 600 !important;
+  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.15);
+}
+
+.support-pill-btn svg {
+  color: #fbbf24;
+  filter: drop-shadow(0 0 4px rgba(245, 158, 11, 0.6));
+  transition: transform 0.25s ease;
+}
+
+.support-pill-btn:hover {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.35), rgba(180, 83, 9, 0.42)) !important;
+  border-color: #fbbf24 !important;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 22px rgba(245, 158, 11, 0.35) !important;
+}
+
+.support-pill-btn:hover svg {
+  transform: scale(1.18);
+}
+
+.support-modal-card {
+  max-width: 460px;
+}
+
+.support-modal-body {
+  padding: 20px 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+}
+
+.support-intro-text {
+  font-size: 0.88rem;
+  line-height: 1.6;
+  color: #e2d7c9;
+  margin: 0;
+}
+
+.support-intro-text strong {
+  color: #fbbf24;
+}
+
+.support-qr-card {
+  background: rgba(18, 13, 11, 0.75);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: 16px;
+  padding: 20px 18px 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 10px 30px rgba(0, 0, 0, 0.45);
+}
+
+.qr-glow-frame {
+  background: #ffffff;
+  padding: 12px;
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6), 0 0 25px rgba(245, 158, 11, 0.2);
+  border: 2px solid rgba(245, 158, 11, 0.4);
+}
+
+.support-qr-image {
+  width: 175px;
+  height: 175px;
+  display: block;
+  object-fit: contain;
+  border-radius: 6px;
+}
+
+.qr-badge {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #120d0b;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 4px 12px;
+  border-radius: 20px;
+  margin-top: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.support-upi-info {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+}
+
+.upi-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--text-muted);
+}
+
+.upi-copy-box {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: 10px;
+  padding: 7px 8px 7px 14px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.upi-copy-box:hover {
+  border-color: #fbbf24;
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.25);
+}
+
+.upi-id-value {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #fbbf24;
+  letter-spacing: 0.5px;
+  user-select: all;
+}
+
+.copy-upi-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(245, 158, 11, 0.2);
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  color: #ffedd5;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.copy-upi-btn:hover {
+  background: #f59e0b;
+  color: #120d0b;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 10px rgba(245, 158, 11, 0.4);
+}
+
+.copy-upi-btn:active {
+  transform: translateY(0);
+}
+
+.support-apps-tagline {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.55);
+  margin-top: 4px;
+  text-align: center;
+}
+
+.support-gratitude-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px dashed rgba(245, 158, 11, 0.3);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+
+.support-gratitude-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.support-gratitude-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: #e2d7c9;
+}
+
+.support-gratitude-text strong {
+  color: #fbbf24;
+  font-size: 0.85rem;
+}
+
 /* Invisible YouTube container kept in viewport to prevent mobile freezing */
 #ytPlayerHost {
   position: fixed;
