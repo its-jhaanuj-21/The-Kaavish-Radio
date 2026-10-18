@@ -88,9 +88,6 @@
           </svg>
           <span>Notes</span>
         </button>
-        <button class="pill-btn" id="btnOpenMobileQR" title="Open on your Phone">
-          <span>📱 Phone</span>
-        </button>
         <button class="pill-btn" id="btnOpenAbout" title="About The Kaavish">
           <span>About</span>
         </button>
@@ -393,44 +390,6 @@
     </div>
   </div>
 
-  <!-- Mobile QR Code Modal -->
-  <div class="modal-backdrop" id="mobileQRModal">
-    <div class="modal-card">
-      <div class="modal-header">
-        <h3>📱 Play on your Mobile Phone</h3>
-        <button class="modal-close-btn">&times;</button>
-      </div>
-      <div class="modal-body" style="text-align: center;">
-        <p style="margin-bottom: 16px; font-size: 0.88rem; color: #a8a29e;">
-          Connect your phone to your Wi-Fi and scan this QR code with your phone camera:
-        </p>
-
-        <div
-          style="display: inline-block; padding: 12px; background: #120d0b; border: 2px solid #f59e0b; border-radius: 16px; box-shadow: 0 0 25px rgba(245, 158, 11, 0.35); margin-bottom: 16px;">
-          <img
-            src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=http://192.168.1.4:8080&color=f59e0b&bgcolor=120d0b"
-            alt="QR Code to open on mobile" width="200" height="200" style="display: block; border-radius: 8px;">
-        </div>
-
-        <div style="margin-bottom: 14px;">
-          <span style="font-size: 0.78rem; color: #78716c; display: block; margin-bottom: 4px;">Or open this link on
-            your phone's browser:</span>
-          <div
-            style="background: rgba(0,0,0,0.5); padding: 8px 14px; border-radius: 9999px; font-family: monospace; font-size: 1rem; color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); display: inline-flex; align-items: center; gap: 8px;">
-            <span>http://192.168.1.4:8080</span>
-          </div>
-        </div>
-
-        <div
-          style="background: rgba(255,255,255,0.04); border-radius: 12px; padding: 12px; font-size: 0.78rem; color: #d1c5b4; text-align: left; line-height: 1.6;">
-          <strong style="color: #fbbf24;">💡 Pro Tips:</strong><br>
-          • <strong>iOS Safari:</strong> Tap the Share button &gt; <em>"Add to Home Screen"</em> to enjoy it fullscreen
-          without browser bars!<br>
-          • <strong>Android Chrome:</strong> Tap three dots &gt; <em>"Add to Home screen" / "Install App"</em>.<br>
-          • Make sure your phone is connected to the same Wi-Fi network as this computer.
-        </div>
-      </div>
-    </div>
   </div>
 
   <!-- About The Kaavish Modal -->

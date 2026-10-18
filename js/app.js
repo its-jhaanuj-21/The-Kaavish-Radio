@@ -481,7 +481,6 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btnOpenLyrics')?.addEventListener('click', () => openModal('lyricsModal'));
   document.getElementById('btnOpenAbout')?.addEventListener('click', () => openModal('aboutModal'));
   document.getElementById('btnOpenNotes')?.addEventListener('click', () => openModal('notesModal'));
-  document.getElementById('btnOpenMobileQR')?.addEventListener('click', () => openModal('mobileQRModal'));
 
   // Mini Banner close
   document.getElementById('closeBannerBtn')?.addEventListener('click', () => {
