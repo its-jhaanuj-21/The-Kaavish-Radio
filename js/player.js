@@ -966,15 +966,25 @@ class KaavishMusicPlayer {
     this.vinylCoverEl = document.getElementById('vinylCoverImg');
     this.heroQuoteEl = document.getElementById('heroQuote');
 
+    // Background audio keeper to grant mobile browsers OS-level audio session priority
+    try {
+      this.bgAudio = new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA==");
+      this.bgAudio.loop = true;
+      this.bgAudio.playsInline = true;
+    } catch (e) {
+      this.bgAudio = null;
+    }
+
     this.bindEvents();
     this.updateTrackDisplay();
+    this.updateMediaSession(this.playlist[this.currentIndex]);
   }
 
   initYouTubeAPI() {
     window.onYouTubeIframeAPIReady = () => {
       this.ytPlayer = new YT.Player('ytPlayerHost', {
-        height: '1',
-        width: '1',
+        height: '200',
+        width: '200',
         videoId: this.playlist[this.currentIndex].id,
         playerVars: {
           autoplay: 0,
@@ -982,7 +992,8 @@ class KaavishMusicPlayer {
           disablekb: 1,
           fs: 0,
           modestbranding: 1,
-          rel: 0
+          rel: 0,
+          playsinline: 1
         },
         events: {
           onReady: () => {
@@ -993,14 +1004,22 @@ class KaavishMusicPlayer {
             if (event.data === YT.PlayerState.PLAYING) {
               this.setPlayingState(true);
             } else if (event.data === YT.PlayerState.PAUSED) {
-              this.setPlayingState(false);
+              // If tab is hidden (user switched apps or locked screen), keep playing
+              if (document.hidden && this.isPlaying) {
+                setTimeout(() => {
+                  if (this.isPlaying && this.ytPlayer && this.ytPlayer.playVideo) {
+                    this.ytPlayer.playVideo();
+                  }
+                }, 150);
+              } else {
+                this.setPlayingState(false);
+              }
             } else if (event.data === YT.PlayerState.ENDED) {
               this.handleTrackEnd();
             }
           },
           onError: (e) => {
             console.warn("YouTube player notice (Code: " + e.data + "), skipping or retrying...");
-            // Automatically advance to next available track
             setTimeout(() => this.nextTrack(), 1500);
           }
         }
@@ -1052,19 +1071,70 @@ class KaavishMusicPlayer {
         this.prevTrack();
       }
     });
+
+    // Auto-resume when coming back to tab if needed
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && this.isPlaying && this.ytReady && this.ytPlayer) {
+        if (this.ytPlayer.getPlayerState && this.ytPlayer.getPlayerState() !== YT.PlayerState.PLAYING) {
+          this.ytPlayer.playVideo();
+        }
+      }
+    });
   }
 
   togglePlay() {
     if (!this.ytReady || !this.ytPlayer) {
-      // If YT API not ready yet, toggle visually and wait
       this.setPlayingState(!this.isPlaying);
       return;
     }
 
     if (this.isPlaying) {
-      this.ytPlayer.pauseVideo();
+      this.pauseTrack();
     } else {
+      this.playTrack();
+    }
+  }
+
+  playTrack() {
+    if (this.ytReady && this.ytPlayer) {
       this.ytPlayer.playVideo();
+    }
+    this.setPlayingState(true);
+  }
+
+  pauseTrack() {
+    if (this.ytReady && this.ytPlayer) {
+      this.ytPlayer.pauseVideo();
+    }
+    this.setPlayingState(false);
+  }
+
+  updateMediaSession(track) {
+    if (!('mediaSession' in navigator)) return;
+
+    try {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: track.title,
+        artist: track.artist || 'The Kaavish',
+        album: track.album || track.subtitle || 'The Kaavish Radio',
+        artwork: [
+          { src: `https://img.youtube.com/vi/${track.id}/hqdefault.jpg`, sizes: '480x360', type: 'image/jpeg' },
+          { src: 'assets/images/Img1.png', sizes: '512x512', type: 'image/png' },
+          { src: 'assets/images/Img2.png', sizes: '512x512', type: 'image/png' }
+        ]
+      });
+
+      navigator.mediaSession.setActionHandler('play', () => this.playTrack());
+      navigator.mediaSession.setActionHandler('pause', () => this.pauseTrack());
+      navigator.mediaSession.setActionHandler('previoustrack', () => this.prevTrack());
+      navigator.mediaSession.setActionHandler('nexttrack', () => this.nextTrack());
+      navigator.mediaSession.setActionHandler('seekto', (details) => {
+        if (details.seekTime !== undefined && this.ytReady && this.ytPlayer) {
+          this.ytPlayer.seekTo(details.seekTime, true);
+        }
+      });
+    } catch (err) {
+      console.warn('MediaSession notice:', err);
     }
   }
 
@@ -1085,8 +1155,20 @@ class KaavishMusicPlayer {
     }
 
     if (isPlaying) {
+      if (this.bgAudio) {
+        this.bgAudio.play().catch(() => {});
+      }
+      if ('mediaSession' in navigator) {
+        navigator.mediaSession.playbackState = 'playing';
+      }
       this.startProgressTracker();
     } else {
+      if (this.bgAudio) {
+        this.bgAudio.pause();
+      }
+      if ('mediaSession' in navigator) {
+        navigator.mediaSession.playbackState = 'paused';
+      }
       this.stopProgressTracker();
     }
   }
@@ -1096,6 +1178,7 @@ class KaavishMusicPlayer {
     const track = this.playlist[this.currentIndex];
 
     this.updateTrackDisplay();
+    this.updateMediaSession(track);
 
     if (this.ytReady && this.ytPlayer) {
       if (autoPlay) {

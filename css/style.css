@@ -1375,15 +1375,17 @@ body {
   transform: translateX(-50%) translateY(0);
 }
 
-/* Invisible YouTube container */
+/* Invisible YouTube container kept in viewport to prevent mobile freezing */
 #ytPlayerHost {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  opacity: 0.01;
+  position: fixed;
+  bottom: 0;
+  right: 0;
+  width: 200px;
+  height: 200px;
+  opacity: 0.001;
   pointer-events: none;
-  left: -9999px;
-  top: -9999px;
+  z-index: -10;
+  overflow: hidden;
 }
 
 /* --------------------------------------------------------------------------
