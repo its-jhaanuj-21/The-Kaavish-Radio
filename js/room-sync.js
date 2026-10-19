@@ -131,20 +131,27 @@ class RoomSyncManager {
     return `${base}?room=${this.roomId}`;
   }
 
-  async createRoom() {
+  async createRoom(isPrivate = true) {
     await this.syncServerClock();
 
     const player = window.kaavishPlayer;
     const initialTrackIndex = player ? player.currentIndex : 0;
     const initialIsPlaying = player ? player.isPlaying : false;
     const initialCurrentTime = player ? player.getCurrentTime() : 0;
+    const token = window.authManager ? window.authManager.token : '';
+    const hostName = (window.authManager && window.authManager.user) ? window.authManager.user.name : this.userName;
 
     try {
       const res = await fetch('/api/room/create', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : ''
+        },
         body: JSON.stringify({
-          hostName: this.userName,
+          hostName,
+          token,
+          isPrivate: Boolean(isPrivate && window.authManager && window.authManager.isLoggedIn()),
           state: {
             trackIndex: initialTrackIndex,
             isPlaying: initialIsPlaying,
@@ -160,6 +167,7 @@ class RoomSyncManager {
       this.roomId = data.roomId;
       this.memberId = data.memberId;
       this.isHost = true;
+      this.isPrivate = Boolean(data.isPrivate);
       this.membersCount = 1;
 
       const serverNow = data.serverTime || this.getServerNow();
@@ -178,6 +186,7 @@ class RoomSyncManager {
       return {
         success: true,
         roomId: this.roomId,
+        isPrivate: this.isPrivate,
         inviteUrl: this.getInviteLink()
       };
     } catch (err) {
@@ -194,24 +203,42 @@ class RoomSyncManager {
       throw new Error('Please enter a valid 6-digit room code');
     }
 
+    const token = window.authManager ? window.authManager.token : '';
+
     try {
       const res = await fetch('/api/room/join', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : ''
+        },
         body: JSON.stringify({
           roomId: cleanCode,
-          memberName: this.userName
+          memberName: (window.authManager && window.authManager.user) ? window.authManager.user.name : this.userName,
+          token
         })
       });
 
       const data = await res.json();
+
       if (!res.ok || !data.success) {
+        if (data && data.code === 'ACCOUNT_REQUIRED') {
+          const err = new Error(data.error || 'Account required');
+          err.code = 'ACCOUNT_REQUIRED';
+          throw err;
+        }
+        if (data && data.code === 'KNOCK_REQUIRED') {
+          const err = new Error(data.message || 'Knock required');
+          err.code = 'KNOCK_REQUIRED';
+          err.hostUser = data.hostUser;
+          throw err;
+        }
         throw new Error(data.error || 'Room not found. Please verify the code.');
       }
 
       this.roomId = data.roomId;
       this.memberId = data.memberId;
-      this.isHost = false;
+      this.isHost = Boolean(data.isHost);
       this.membersCount = data.membersCount || 2;
 
       const serverNow = data.serverTime || this.getServerNow();
@@ -243,6 +270,91 @@ class RoomSyncManager {
       console.error('[RoomSync] Error joining room:', err);
       throw err;
     }
+  }
+
+  async knockRoom(code) {
+    const cleanCode = (code || '').toString().trim().replace(/[^0-9]/g, '');
+    const token = window.authManager ? window.authManager.token : '';
+
+    const res = await fetch('/api/room/knock', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': token ? `Bearer ${token}` : ''
+      },
+      body: JSON.stringify({ roomId: cleanCode, token })
+    });
+
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'Failed to knock at the room.');
+    }
+    this.activeKnockId = data.knockId;
+    this.activeKnockRoomCode = cleanCode;
+    this.knockCancelled = false;
+    return data;
+  }
+
+  cancelKnock() {
+    this.knockCancelled = true;
+    this.activeKnockId = null;
+    this.activeKnockRoomCode = null;
+  }
+
+  async pollKnockStatus(code, knockId) {
+    const cleanCode = (code || this.activeKnockRoomCode || '').toString().trim().replace(/[^0-9]/g, '');
+    const kId = knockId || this.activeKnockId || '';
+    const token = window.authManager ? window.authManager.token : '';
+    this.knockCancelled = false;
+
+    // Poll every 1.5s for up to 60s
+    for (let attempt = 0; attempt < 40; attempt++) {
+      if (this.knockCancelled) {
+        throw new Error('Knock cancelled');
+      }
+
+      try {
+        const res = await fetch(`/api/room/knock-status?roomId=${encodeURIComponent(cleanCode)}&knockId=${encodeURIComponent(kId)}`, {
+          headers: {
+            'Authorization': token ? `Bearer ${token}` : ''
+          }
+        });
+        const data = await res.json();
+        if (data && data.success) {
+          if (data.status === 'approved' || data.status === 'declined') {
+            return data;
+          }
+        }
+      } catch (e) {}
+
+      await new Promise(r => setTimeout(r, 1500));
+    }
+
+    throw new Error('Knock request timed out waiting for host response.');
+  }
+
+  async respondToKnock(roomId, knockIdOrUserId, allow) {
+    const token = window.authManager ? window.authManager.token : '';
+    const res = await fetch('/api/room/knock-response', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': token ? `Bearer ${token}` : ''
+      },
+      body: JSON.stringify({
+        roomId,
+        knockId: knockIdOrUserId,
+        applicantUserId: knockIdOrUserId,
+        allow: Boolean(allow),
+        token
+      })
+    });
+
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'Failed to respond to knock request.');
+    }
+    return data;
   }
 
   async leaveRoom() {
@@ -324,6 +436,27 @@ class RoomSyncManager {
 
         if (window.showToast) {
           window.showToast(`👋 ${payload.name || 'A listener'} left the Mehfil.`);
+        }
+      } catch (err) {}
+    });
+
+    this.eventSource.addEventListener('room_knock', (e) => {
+      try {
+        const payload = JSON.parse(e.data);
+        window.dispatchEvent(new CustomEvent('roomknockreceived', { detail: payload }));
+      } catch (err) {}
+    });
+
+    this.eventSource.addEventListener('knock_result', (e) => {
+      try {
+        const payload = JSON.parse(e.data);
+        if (payload.status === 'approved' && payload.guestUser) {
+          if (window.showToast) {
+            window.showToast(`✨ Connected! You and ${payload.guestUser.name} are now Mehfil friends.`);
+          }
+          if (window.authManager && window.authManager.isLoggedIn()) {
+            window.authManager.fetchCurrentUser();
+          }
         }
       } catch (err) {}
     });

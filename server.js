@@ -22,6 +22,9 @@ const MIME_TYPES = {
   '.ttf': 'font/ttf'
 };
 
+const crypto = require('crypto');
+const USERS_FILE = path.join(DATA_DIR, 'users.json');
+
 function getNotesFromDisk() {
   try {
     if (!fs.existsSync(DATA_DIR)) {
@@ -48,6 +51,92 @@ function saveNotesToDisk(notes) {
     console.error('Error writing notes file:', err);
     return false;
   }
+}
+
+// ---------------------------------------------------------------------------
+// User Accounts & Musical Profiles Storage
+// ---------------------------------------------------------------------------
+function getUsersFromDisk() {
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    if (fs.existsSync(USERS_FILE)) {
+      const data = fs.readFileSync(USERS_FILE, 'utf-8');
+      return JSON.parse(data);
+    }
+  } catch (err) {
+    console.error('Error reading users file:', err);
+  }
+  return {};
+}
+
+function saveUsersToDisk(users) {
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), 'utf-8');
+    return true;
+  } catch (err) {
+    console.error('Error writing users file:', err);
+    return false;
+  }
+}
+
+function computeInitials(name) {
+  if (!name) return 'KR';
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+  return name.trim().slice(0, 2).toUpperCase();
+}
+
+function hashPassword(password) {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto.scryptSync(password, salt, 64).toString('hex');
+  return { salt, hash };
+}
+
+function verifyPassword(password, salt, hash) {
+  try {
+    const computed = crypto.scryptSync(password, salt, 64).toString('hex');
+    return crypto.timingSafeEqual(Buffer.from(computed), Buffer.from(hash));
+  } catch (e) {
+    return false;
+  }
+}
+
+// In-memory active sessions: token -> { userId, createdAt }
+const activeSessions = new Map();
+
+function getUserIdFromToken(token) {
+  if (!token) return null;
+  const clean = token.replace(/^Bearer\s+/i, '').trim();
+  const session = activeSessions.get(clean);
+  if (session && Date.now() - session.createdAt < 30 * 24 * 3600 * 1000) {
+    return session.userId;
+  }
+  return null;
+}
+
+function sanitizeUser(user, includePrivate = false) {
+  if (!user) return null;
+  return {
+    id: user.id,
+    name: user.name,
+    username: user.username,
+    initials: user.initials || computeInitials(user.name),
+    createdAt: user.createdAt,
+    profile: {
+      favSinger: (user.profile && user.profile.favSinger) || '',
+      favSong: (user.profile && user.profile.favSong) || '',
+      status: (user.profile && user.profile.status) || ''
+    },
+    friendsCount: (user.friends || []).length,
+    friends: includePrivate ? (user.friends || []) : undefined
+  };
 }
 
 // In-memory real active listeners tracker
@@ -254,10 +343,285 @@ const server = http.createServer((req, res) => {
   }
 
   // -------------------------------------------------------------------------
+  // User Authentication & Musical Profile Endpoints
+  // -------------------------------------------------------------------------
+
+  // 1. Register new user
+  if (safePath === '/api/auth/register' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => {
+      body += chunk;
+      if (body.length > 20000) req.destroy();
+    });
+    req.on('end', () => {
+      try {
+        const payload = JSON.parse(body || '{}');
+        const name = (payload.name || '').trim();
+        const username = (payload.username || '').toLowerCase().trim();
+        const password = (payload.password || '').trim();
+        const favSinger = (payload.favSinger || '').trim();
+        const favSong = (payload.favSong || '').trim();
+        const status = (payload.status || '').trim();
+
+        if (!name || name.length < 2 || name.length > 60) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, error: 'Name must be between 2 and 60 characters.' }));
+          return;
+        }
+
+        if (!username || !/^[a-z0-9_]{3,20}$/.test(username)) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, error: 'Username must be 3-20 characters (letters, numbers, underscores only).' }));
+          return;
+        }
+
+        if (!password || password.length < 6) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, error: 'Password must be at least 6 characters.' }));
+          return;
+        }
+
+        const users = getUsersFromDisk();
+
+        // Check if username already exists
+        const exists = Object.values(users).some(u => u.username === username);
+        if (exists) {
+          res.writeHead(409, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, error: `Username @${username} is already taken. Please choose another.` }));
+          return;
+        }
+
+        const { salt, hash } = hashPassword(password);
+        const userId = 'usr_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+
+        const newUser = {
+          id: userId,
+          name,
+          username,
+          passwordHash: hash,
+          salt,
+          initials: computeInitials(name),
+          createdAt: Date.now(),
+          profile: {
+            favSinger: favSinger.slice(0, 60) || 'The Kaavish',
+            favSong: favSong.slice(0, 60) || 'Faasle',
+            status: status.slice(0, 160) || 'Listening to peaceful acoustic chords...'
+          },
+          friends: []
+        };
+
+        users[userId] = newUser;
+        saveUsersToDisk(users);
+
+        const token = crypto.randomBytes(32).toString('hex');
+        activeSessions.set(token, { userId, createdAt: Date.now() });
+
+        res.writeHead(201, { 'Content-Type': 'application/json; charset=UTF-8' });
+        res.end(JSON.stringify({
+          success: true,
+          token,
+          user: sanitizeUser(newUser, true)
+        }));
+      } catch (err) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: 'Invalid signup payload' }));
+      }
+    });
+    return;
+  }
+
+  // 2. Login user
+  if (safePath === '/api/auth/login' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => {
+      body += chunk;
+      if (body.length > 20000) req.destroy();
+    });
+    req.on('end', () => {
+      try {
+        const payload = JSON.parse(body || '{}');
+        const username = (payload.username || '').toLowerCase().trim();
+        const password = (payload.password || '').trim();
+
+        if (!username || !password) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, error: 'Username and password are required.' }));
+          return;
+        }
+
+        const users = getUsersFromDisk();
+        const user = Object.values(users).find(u => u.username === username);
+
+        if (!user || !verifyPassword(password, user.salt, user.passwordHash)) {
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, error: 'Invalid username or password.' }));
+          return;
+        }
+
+        const token = crypto.randomBytes(32).toString('hex');
+        activeSessions.set(token, { userId: user.id, createdAt: Date.now() });
+
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=UTF-8' });
+        res.end(JSON.stringify({
+          success: true,
+          token,
+          user: sanitizeUser(user, true)
+        }));
+      } catch (err) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: 'Invalid login payload' }));
+      }
+    });
+    return;
+  }
+
+  // 3. Current User Profile (/api/auth/me)
+  if (safePath === '/api/auth/me' && req.method === 'GET') {
+    const authHeader = req.headers.authorization || '';
+    const userId = getUserIdFromToken(authHeader);
+
+    if (!userId) {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: false, error: 'Not authenticated' }));
+      return;
+    }
+
+    const users = getUsersFromDisk();
+    const user = users[userId];
+
+    if (!user) {
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: false, error: 'User not found' }));
+      return;
+    }
+
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=UTF-8' });
+    res.end(JSON.stringify({
+      success: true,
+      user: sanitizeUser(user, true)
+    }));
+    return;
+  }
+
+  // 4. Update Musical Profile (/api/auth/profile)
+  if (safePath === '/api/auth/profile' && req.method === 'POST') {
+    const authHeader = req.headers.authorization || '';
+    const userId = getUserIdFromToken(authHeader);
+
+    if (!userId) {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: false, error: 'Authentication required' }));
+      return;
+    }
+
+    let body = '';
+    req.on('data', chunk => {
+      body += chunk;
+      if (body.length > 20000) req.destroy();
+    });
+    req.on('end', () => {
+      try {
+        const payload = JSON.parse(body || '{}');
+        const users = getUsersFromDisk();
+        const user = users[userId];
+
+        if (!user) {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, error: 'User not found' }));
+          return;
+        }
+
+        if (payload.name && payload.name.trim().length >= 2) {
+          user.name = payload.name.trim().slice(0, 60);
+          user.initials = computeInitials(user.name);
+        }
+
+        if (!user.profile) user.profile = {};
+        if (payload.favSinger !== undefined) user.profile.favSinger = String(payload.favSinger).trim().slice(0, 60);
+        if (payload.favSong !== undefined) user.profile.favSong = String(payload.favSong).trim().slice(0, 60);
+        if (payload.status !== undefined) user.profile.status = String(payload.status).trim().slice(0, 160);
+
+        saveUsersToDisk(users);
+
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=UTF-8' });
+        res.end(JSON.stringify({
+          success: true,
+          user: sanitizeUser(user, true)
+        }));
+      } catch (err) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: 'Invalid profile payload' }));
+      }
+    });
+    return;
+  }
+
+  // 5. Logout (/api/auth/logout)
+  if (safePath === '/api/auth/logout' && req.method === 'POST') {
+    const authHeader = req.headers.authorization || '';
+    const clean = authHeader.replace(/^Bearer\s+/i, '').trim();
+    if (clean) activeSessions.delete(clean);
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=UTF-8' });
+    res.end(JSON.stringify({ success: true }));
+    return;
+  }
+
+  // 6. Friends List (Visible only to confirmed friends)
+  if (safePath === '/api/friends/list' && req.method === 'GET') {
+    const authHeader = req.headers.authorization || '';
+    const myId = getUserIdFromToken(authHeader);
+
+    if (!myId) {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: false, error: 'Please log in to view friends.' }));
+      return;
+    }
+
+    const urlObj = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+    const targetUserId = urlObj.searchParams.get('userId') || myId;
+
+    const users = getUsersFromDisk();
+    const myUser = users[myId];
+    const targetUser = users[targetUserId];
+
+    if (!targetUser) {
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: false, error: 'User not found' }));
+      return;
+    }
+
+    // Privacy rule: Only mutual friends or oneself can see the friend list!
+    const isSelf = (targetUserId === myId);
+    const areFriends = (myUser && (myUser.friends || []).includes(targetUserId));
+
+    if (!isSelf && !areFriends) {
+      res.writeHead(403, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        success: false,
+        error: 'Private: This friend list is only visible to confirmed friends.'
+      }));
+      return;
+    }
+
+    const friendsList = (targetUser.friends || [])
+      .map(fid => users[fid])
+      .filter(Boolean)
+      .map(u => sanitizeUser(u, false));
+
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=UTF-8' });
+    res.end(JSON.stringify({
+      success: true,
+      friends: friendsList,
+      count: friendsList.length
+    }));
+    return;
+  }
+
+  // -------------------------------------------------------------------------
   // Real-time Mehfil / Sync Rooms Endpoints
   // -------------------------------------------------------------------------
 
-  // 1. Create a new room
+  // 1. Create a new room (supports private / account-only mode)
   if (safePath === '/api/room/create' && req.method === 'POST') {
     let body = '';
     req.on('data', chunk => {
@@ -267,17 +631,27 @@ const server = http.createServer((req, res) => {
     req.on('end', () => {
       try {
         const payload = JSON.parse(body || '{}');
+        const authHeader = req.headers.authorization || payload.token || '';
+        const hostUserId = getUserIdFromToken(authHeader);
+
+        const users = getUsersFromDisk();
+        const hostUser = hostUserId ? users[hostUserId] : null;
+
         const roomId = generateRoomId();
         const memberId = 'm_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now();
         const state = payload.state || {};
         const trackIndex = (typeof state.trackIndex === 'number') ? state.trackIndex : 0;
         const isPlaying = Boolean(state.isPlaying);
         const currentTime = (typeof state.currentTime === 'number') ? state.currentTime : 0;
+        const isPrivate = payload.isPrivate !== false && Boolean(hostUser);
 
         const now = Date.now();
         const newRoom = {
           id: roomId,
           hostId: memberId,
+          hostUserId: hostUser ? hostUser.id : null,
+          hostName: hostUser ? hostUser.name : (payload.hostName || 'Host'),
+          isPrivate,
           createdAt: now,
           lastActive: now,
           state: {
@@ -288,7 +662,8 @@ const server = http.createServer((req, res) => {
             anchorServerTime: now,
             updatedAt: now
           },
-          members: new Map()
+          members: new Map(),
+          pendingKnocks: new Map() // knockId -> { guestUser, status: 'pending'|'approved'|'declined', timestamp }
         };
 
         rooms.set(roomId, newRoom);
@@ -299,6 +674,8 @@ const server = http.createServer((req, res) => {
           roomId,
           memberId,
           isHost: true,
+          isPrivate,
+          hostUser: hostUser ? sanitizeUser(hostUser, false) : null,
           serverTime: now,
           state: newRoom.state
         }));
@@ -310,7 +687,7 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // 2. Join an existing room
+  // 2. Join an existing room (enforces knocking and friend verification for private rooms)
   if (safePath === '/api/room/join' && req.method === 'POST') {
     let body = '';
     req.on('data', chunk => {
@@ -327,6 +704,40 @@ const server = http.createServer((req, res) => {
           res.writeHead(404, { 'Content-Type': 'application/json; charset=UTF-8' });
           res.end(JSON.stringify({ success: false, error: 'Room not found. Please check the 6-digit code.' }));
           return;
+        }
+
+        const authHeader = req.headers.authorization || payload.token || '';
+        const guestUserId = getUserIdFromToken(authHeader);
+        const users = getUsersFromDisk();
+        const guestUser = guestUserId ? users[guestUserId] : null;
+
+        // If room is private / account-only
+        if (room.isPrivate) {
+          if (!guestUser) {
+            res.writeHead(403, { 'Content-Type': 'application/json; charset=UTF-8' });
+            res.end(JSON.stringify({
+              success: false,
+              code: 'ACCOUNT_REQUIRED',
+              error: 'This is a private friend Mehfil. Please log in or create an account to request entry.'
+            }));
+            return;
+          }
+
+          const hostUser = room.hostUserId ? users[room.hostUserId] : null;
+          const isHost = (guestUser.id === room.hostUserId);
+          const isAlreadyFriend = hostUser && (hostUser.friends || []).includes(guestUser.id);
+
+          // If not host and not already friends -> Require knocking!
+          if (!isHost && !isAlreadyFriend) {
+            res.writeHead(403, { 'Content-Type': 'application/json; charset=UTF-8' });
+            res.end(JSON.stringify({
+              success: false,
+              code: 'KNOCK_REQUIRED',
+              hostUser: hostUser ? sanitizeUser(hostUser, false) : { name: room.hostName || 'Host', initials: 'KR' },
+              message: `Knock at the door to request joining ${hostUser ? hostUser.name : 'Host'}'s Mehfil.`
+            }));
+            return;
+          }
         }
 
         const now = Date.now();
@@ -346,7 +757,7 @@ const server = http.createServer((req, res) => {
           success: true,
           roomId: room.id,
           memberId,
-          isHost: false,
+          isHost: Boolean(guestUser && guestUser.id === room.hostUserId),
           serverTime: now,
           state: {
             ...room.state,
@@ -363,6 +774,193 @@ const server = http.createServer((req, res) => {
       } catch (err) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: false, error: 'Invalid request payload' }));
+      }
+    });
+    return;
+  }
+
+  // 2b. Knock on a Private Room Door (Guest -> Host Approval Request)
+  if (safePath === '/api/room/knock' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => {
+      body += chunk;
+      if (body.length > 20000) req.destroy();
+    });
+    req.on('end', () => {
+      try {
+        const payload = JSON.parse(body || '{}');
+        const rawCode = (payload.roomId || '').toString().trim().replace(/[^0-9]/g, '');
+        const room = rooms.get(rawCode);
+
+        if (!room) {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, error: 'Room not found' }));
+          return;
+        }
+
+        const authHeader = req.headers.authorization || payload.token || '';
+        const guestUserId = getUserIdFromToken(authHeader);
+        const users = getUsersFromDisk();
+        const guestUser = guestUserId ? users[guestUserId] : null;
+
+        if (!guestUser) {
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, error: 'Please log in to knock.' }));
+          return;
+        }
+
+        const knockId = 'kn_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+        if (!room.pendingKnocks) room.pendingKnocks = new Map();
+
+        const knockEntry = {
+          knockId,
+          guestUserId: guestUser.id,
+          guestUser: sanitizeUser(guestUser, false),
+          status: 'pending',
+          createdAt: Date.now()
+        };
+        room.pendingKnocks.set(knockId, knockEntry);
+
+        // Broadcast live knocking notification to Host SSE
+        broadcastToRoom(room, 'room_knock', {
+          knockId,
+          roomId: room.id,
+          guestUser: sanitizeUser(guestUser, false)
+        });
+
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=UTF-8' });
+        res.end(JSON.stringify({
+          success: true,
+          knockId,
+          status: 'pending'
+        }));
+      } catch (err) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: 'Invalid knock request' }));
+      }
+    });
+    return;
+  }
+
+  // 2c. Check Knock Status (Guest polls or awaits host answer)
+  if (safePath === '/api/room/knock-status' && req.method === 'GET') {
+    const urlObj = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+    const code = (urlObj.searchParams.get('roomId') || '').trim().replace(/[^0-9]/g, '');
+    const knockId = (urlObj.searchParams.get('knockId') || '').trim();
+    const authHeader = req.headers.authorization || '';
+    const guestUserId = getUserIdFromToken(authHeader);
+
+    const room = rooms.get(code);
+    if (!room || !room.pendingKnocks) {
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: false, error: 'Knock request not found or expired' }));
+      return;
+    }
+
+    let knock = null;
+    if (knockId && room.pendingKnocks.has(knockId)) {
+      knock = room.pendingKnocks.get(knockId);
+    } else if (guestUserId) {
+      for (const entry of room.pendingKnocks.values()) {
+        if (entry.guestUserId === guestUserId) {
+          knock = entry;
+          break;
+        }
+      }
+    }
+
+    if (!knock) {
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: false, error: 'Knock request not found or expired' }));
+      return;
+    }
+
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=UTF-8' });
+    res.end(JSON.stringify({
+      success: true,
+      knockId: knock.knockId,
+      status: knock.status // 'pending' | 'approved' | 'declined'
+    }));
+    return;
+  }
+
+  // 2d. Host Response to Knock (Allow & Add Friend OR Decline)
+  if (safePath === '/api/room/knock-response' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => {
+      body += chunk;
+      if (body.length > 20000) req.destroy();
+    });
+    req.on('end', () => {
+      try {
+        const payload = JSON.parse(body || '{}');
+        const code = (payload.roomId || '').toString().trim().replace(/[^0-9]/g, '');
+        const knockId = (payload.knockId || '').trim();
+        const applicantUserId = (payload.applicantUserId || '').trim();
+        const allow = Boolean(payload.allow !== undefined ? payload.allow : payload.approved);
+
+        const room = rooms.get(code);
+        if (!room || !room.pendingKnocks) {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, error: 'Knock request expired' }));
+          return;
+        }
+
+        let knock = null;
+        if (knockId && room.pendingKnocks.has(knockId)) {
+          knock = room.pendingKnocks.get(knockId);
+        } else if (applicantUserId) {
+          for (const entry of room.pendingKnocks.values()) {
+            if (entry.guestUserId === applicantUserId) {
+              knock = entry;
+              break;
+            }
+          }
+        }
+
+        if (!knock) {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, error: 'Knock request expired' }));
+          return;
+        }
+
+        const authHeader = req.headers.authorization || payload.token || '';
+        const hostUserId = getUserIdFromToken(authHeader);
+
+        if (!hostUserId || (room.hostUserId && hostUserId !== room.hostUserId)) {
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, error: 'Only the room host can respond to knocks' }));
+          return;
+        }
+
+        knock.status = allow ? 'approved' : 'declined';
+
+        if (allow) {
+          // Permanently add each other to mutual Friends list!
+          const users = getUsersFromDisk();
+          const hostUser = users[hostUserId];
+          const guestUser = users[knock.guestUserId];
+
+          if (hostUser && guestUser) {
+            if (!hostUser.friends) hostUser.friends = [];
+            if (!guestUser.friends) guestUser.friends = [];
+
+            if (!hostUser.friends.includes(guestUser.id)) hostUser.friends.push(guestUser.id);
+            if (!guestUser.friends.includes(hostUser.id)) guestUser.friends.push(hostUser.id);
+
+            saveUsersToDisk(users);
+          }
+        }
+
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=UTF-8' });
+        res.end(JSON.stringify({
+          success: true,
+          knockId: knock.knockId,
+          status: knock.status
+        }));
+      } catch (err) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: 'Invalid response payload' }));
       }
     });
     return;

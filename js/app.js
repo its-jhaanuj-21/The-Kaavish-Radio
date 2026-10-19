@@ -742,6 +742,363 @@ document.addEventListener('DOMContentLoaded', () => {
   window.showToast = showToast;
 
   // -------------------------------------------------------------------------
+  // Helper: Escape HTML
+  // -------------------------------------------------------------------------
+  function escapeHTML(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  // -------------------------------------------------------------------------
+  // User Account & Musical Profile Controller
+  // -------------------------------------------------------------------------
+  const btnUserAuth = document.getElementById('btnUserAuth');
+  const navUserInitials = document.getElementById('navUserInitials');
+  const navUserName = document.getElementById('navUserName');
+
+  const authLoggedOutView = document.getElementById('authLoggedOutView');
+  const authLoggedInView = document.getElementById('authLoggedInView');
+
+  // Logged-out forms and tabs
+  const tabBtnSignIn = document.getElementById('tabBtnSignIn');
+  const tabBtnRegister = document.getElementById('tabBtnRegister');
+  const signInForm = document.getElementById('signInForm');
+  const registerForm = document.getElementById('registerForm');
+  const loginUsernameInput = document.getElementById('loginUsernameInput');
+  const loginPasswordInput = document.getElementById('loginPasswordInput');
+  const btnSubmitLogin = document.getElementById('btnSubmitLogin');
+
+  const regNameInput = document.getElementById('regNameInput');
+  const regUsernameInput = document.getElementById('regUsernameInput');
+  const regPasswordInput = document.getElementById('regPasswordInput');
+  const regFavSingerInput = document.getElementById('regFavSingerInput');
+  const regFavSongInput = document.getElementById('regFavSongInput');
+  const regStatusInput = document.getElementById('regStatusInput');
+  const btnSubmitRegister = document.getElementById('btnSubmitRegister');
+
+  // Logged-in profile view elements
+  const profileLargeInitials = document.getElementById('profileLargeInitials');
+  const profileDisplayName = document.getElementById('profileDisplayName');
+  const profileDisplayUsername = document.getElementById('profileDisplayUsername');
+  const profileDisplayStatus = document.getElementById('profileDisplayStatus');
+  const profileFriendsCount = document.getElementById('profileFriendsCount');
+
+  const tabBtnProfileTaste = document.getElementById('tabBtnProfileTaste');
+  const tabBtnFriendsList = document.getElementById('tabBtnFriendsList');
+  const tabContentProfileTaste = document.getElementById('tabContentProfileTaste');
+  const tabContentFriendsList = document.getElementById('tabContentFriendsList');
+
+  const editProfileForm = document.getElementById('editProfileForm');
+  const editNameInput = document.getElementById('editNameInput');
+  const editFavSingerInput = document.getElementById('editFavSingerInput');
+  const editFavSongInput = document.getElementById('editFavSongInput');
+  const editStatusInput = document.getElementById('editStatusInput');
+  const btnSaveProfile = document.getElementById('btnSaveProfile');
+  const btnLogoutBtn = document.getElementById('btnLogoutBtn');
+  const friendsListContainer = document.getElementById('friendsListContainer');
+
+  // Friend Profile Inspection Modal
+  const viewFriendAvatar = document.getElementById('viewFriendAvatar');
+  const viewFriendName = document.getElementById('viewFriendName');
+  const viewFriendUsername = document.getElementById('viewFriendUsername');
+  const viewFriendStatus = document.getElementById('viewFriendStatus');
+  const viewFriendSinger = document.getElementById('viewFriendSinger');
+  const viewFriendSong = document.getElementById('viewFriendSong');
+  const btnInviteFriendToMehfil = document.getElementById('btnInviteFriendToMehfil');
+
+  // Knock Approval Modal (Host opens door for friend)
+  const knockApplicantAvatar = document.getElementById('knockApplicantAvatar');
+  const knockApplicantName = document.getElementById('knockApplicantName');
+  const knockApplicantUsername = document.getElementById('knockApplicantUsername');
+  const knockApplicantStatus = document.getElementById('knockApplicantStatus');
+  const knockApplicantSinger = document.getElementById('knockApplicantSinger');
+  const knockApplicantSong = document.getElementById('knockApplicantSong');
+  const btnKnockAllow = document.getElementById('btnKnockAllow');
+  const btnKnockDecline = document.getElementById('btnKnockDecline');
+  let currentKnockApplicant = null;
+
+  // Open Auth modal on nav button click
+  btnUserAuth?.addEventListener('click', () => {
+    openModal('authModal');
+    if (window.authManager && window.authManager.isLoggedIn) {
+      loadAndRenderFriends();
+    }
+  });
+
+  // Switch between Sign In and Register tabs
+  tabBtnSignIn?.addEventListener('click', () => {
+    tabBtnSignIn.classList.add('active');
+    tabBtnRegister?.classList.remove('active');
+    if (signInForm) signInForm.style.display = 'block';
+    if (registerForm) registerForm.style.display = 'none';
+  });
+
+  tabBtnRegister?.addEventListener('click', () => {
+    tabBtnRegister.classList.add('active');
+    tabBtnSignIn?.classList.remove('active');
+    if (registerForm) registerForm.style.display = 'block';
+    if (signInForm) signInForm.style.display = 'none';
+  });
+
+  // Switch between Musical Profile and Friends List tabs
+  tabBtnProfileTaste?.addEventListener('click', () => {
+    tabBtnProfileTaste.classList.add('active');
+    tabBtnFriendsList?.classList.remove('active');
+    if (tabContentProfileTaste) tabContentProfileTaste.style.display = 'block';
+    if (tabContentFriendsList) tabContentFriendsList.style.display = 'none';
+  });
+
+  tabBtnFriendsList?.addEventListener('click', () => {
+    tabBtnFriendsList.classList.add('active');
+    tabBtnProfileTaste?.classList.remove('active');
+    if (tabContentFriendsList) tabContentFriendsList.style.display = 'block';
+    if (tabContentProfileTaste) tabContentProfileTaste.style.display = 'none';
+    loadAndRenderFriends();
+  });
+
+  // Handle Login submission
+  signInForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const username = loginUsernameInput?.value?.trim();
+    const password = loginPasswordInput?.value;
+    if (!username || !password) {
+      showToast('⚠️ Please enter your username and password');
+      return;
+    }
+
+    if (btnSubmitLogin) {
+      btnSubmitLogin.disabled = true;
+      btnSubmitLogin.innerHTML = '<span>Signing in...</span>';
+    }
+
+    try {
+      const user = await window.authManager.login(username, password);
+      showToast(`✨ Welcome back, ${user.name}!`);
+      if (loginPasswordInput) loginPasswordInput.value = '';
+    } catch (err) {
+      showToast('❌ ' + (err.message || 'Login failed'));
+    } finally {
+      if (btnSubmitLogin) {
+        btnSubmitLogin.disabled = false;
+        btnSubmitLogin.innerHTML = '<span>Sign In</span>';
+      }
+    }
+  });
+
+  // Handle Registration submission
+  registerForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = regNameInput?.value?.trim();
+    const username = regUsernameInput?.value?.trim();
+    const password = regPasswordInput?.value;
+    const favSinger = regFavSingerInput?.value?.trim() || '';
+    const favSong = regFavSongInput?.value?.trim() || '';
+    const status = regStatusInput?.value?.trim() || '';
+
+    if (!name || !username || !password) {
+      showToast('⚠️ Please fill in name, username, and password');
+      return;
+    }
+
+    if (btnSubmitRegister) {
+      btnSubmitRegister.disabled = true;
+      btnSubmitRegister.innerHTML = '<span>Creating account...</span>';
+    }
+
+    try {
+      const user = await window.authManager.register({
+        name,
+        username,
+        password,
+        favSinger,
+        favSong,
+        status
+      });
+      showToast(`✨ Welcome to The Kaavish Sanctuary, ${user.name}!`);
+      if (regPasswordInput) regPasswordInput.value = '';
+    } catch (err) {
+      showToast('❌ ' + (err.message || 'Registration failed'));
+    } finally {
+      if (btnSubmitRegister) {
+        btnSubmitRegister.disabled = false;
+        btnSubmitRegister.innerHTML = '<span>Create Soul Account</span>';
+      }
+    }
+  });
+
+  // Handle Profile Update submission
+  editProfileForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = editNameInput?.value?.trim();
+    const favSinger = editFavSingerInput?.value?.trim() || '';
+    const favSong = editFavSongInput?.value?.trim() || '';
+    const status = editStatusInput?.value?.trim() || '';
+
+    if (!name) {
+      showToast('⚠️ Display name is required');
+      return;
+    }
+
+    if (btnSaveProfile) {
+      btnSaveProfile.disabled = true;
+      btnSaveProfile.innerHTML = '<span>Saving...</span>';
+    }
+
+    try {
+      await window.authManager.updateProfile({ name, favSinger, favSong, status });
+      showToast('✓ Musical profile updated successfully');
+    } catch (err) {
+      showToast('❌ ' + (err.message || 'Update failed'));
+    } finally {
+      if (btnSaveProfile) {
+        btnSaveProfile.disabled = false;
+        btnSaveProfile.innerHTML = '<span>Save Changes</span>';
+      }
+    }
+  });
+
+  // Handle Logout
+  btnLogoutBtn?.addEventListener('click', async () => {
+    await window.authManager.logout();
+    showToast('👋 You have been signed out.');
+  });
+
+  // Update UI on Auth State Change
+  function updateAuthUI(user) {
+    if (user) {
+      if (navUserInitials) {
+        navUserInitials.textContent = user.initials || 'KR';
+        navUserInitials.style.display = 'inline-flex';
+      }
+      if (navUserName) {
+        navUserName.textContent = user.name ? user.name.split(' ')[0] : 'Account';
+      }
+      if (authLoggedOutView) authLoggedOutView.style.display = 'none';
+      if (authLoggedInView) authLoggedInView.style.display = 'block';
+
+      if (profileLargeInitials) profileLargeInitials.textContent = user.initials || 'KR';
+      if (profileDisplayName) profileDisplayName.textContent = user.name || '';
+      if (profileDisplayUsername) profileDisplayUsername.textContent = '@' + (user.username || '');
+      if (profileDisplayStatus) {
+        profileDisplayStatus.textContent = user.profile?.status
+          ? `“${user.profile.status}”`
+          : '“Lost in peaceful Kaavish chords...”';
+      }
+      if (profileFriendsCount) {
+        profileFriendsCount.textContent = (user.friends || []).length;
+      }
+
+      if (editNameInput) editNameInput.value = user.name || '';
+      if (editFavSingerInput) editFavSingerInput.value = user.profile?.favSinger || '';
+      if (editFavSongInput) editFavSongInput.value = user.profile?.favSong || '';
+      if (editStatusInput) editStatusInput.value = user.profile?.status || '';
+    } else {
+      if (navUserInitials) navUserInitials.style.display = 'none';
+      if (navUserName) navUserName.textContent = 'Account';
+      if (authLoggedOutView) authLoggedOutView.style.display = 'block';
+      if (authLoggedInView) authLoggedInView.style.display = 'none';
+    }
+  }
+
+  window.addEventListener('authstatechange', (e) => {
+    updateAuthUI(e.detail.user);
+  });
+
+  // Load and Render Confirmed Mutual Friends (Privacy Protected)
+  async function loadAndRenderFriends() {
+    if (!window.authManager || !window.authManager.isLoggedIn) return;
+    if (!friendsListContainer) return;
+
+    friendsListContainer.innerHTML = '<div style="text-align:center; padding:15px; color:#d1c5b4; font-size:0.82rem;">Loading verified friends...</div>';
+
+    try {
+      const friends = await window.authManager.getFriends();
+      if (profileFriendsCount) profileFriendsCount.textContent = friends.length;
+
+      if (!friends || friends.length === 0) {
+        friendsListContainer.innerHTML = `
+          <div class="friends-empty-state">
+            <div class="friends-empty-state-icon">🕊️</div>
+            <div style="font-weight:600; color:#e2d7c9; margin-bottom:4px;">No friends yet</div>
+            <div style="font-size:0.75rem; color:#a8a29e; line-height:1.4;">
+              Start a private Mehfil and share your code. When a listener knocks and you click <em>Allow & Add Friend</em>, they will appear here!
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      friendsListContainer.innerHTML = friends.map((f) => `
+        <div class="friend-card" data-friend-id="${f.id}">
+          <div class="friend-card-left">
+            <div class="friend-card-avatar">${escapeHTML(f.initials || 'KR')}</div>
+            <div class="friend-card-info">
+              <div class="friend-card-name">${escapeHTML(f.name)}</div>
+              <div class="friend-card-user">@${escapeHTML(f.username)}</div>
+              <div class="friend-card-taste">${
+                f.profile?.status
+                  ? escapeHTML(f.profile.status)
+                  : (f.profile?.favSong ? 'Fav Song: ' + escapeHTML(f.profile.favSong) : 'Soul Listener')
+              }</div>
+            </div>
+          </div>
+          <div class="friend-card-actions">
+            <button type="button" class="action-pill-btn" style="padding: 5px 12px; font-size: 0.72rem;">Profile</button>
+          </div>
+        </div>
+      `).join('');
+
+      friendsListContainer.querySelectorAll('.friend-card').forEach((card) => {
+        card.addEventListener('click', () => {
+          const fId = card.getAttribute('data-friend-id');
+          const friend = friends.find((item) => item.id === fId);
+          if (friend) showFriendProfileModal(friend);
+        });
+      });
+    } catch (err) {
+      friendsListContainer.innerHTML = `<div style="text-align:center; padding:15px; color:#fca5a5; font-size:0.82rem;">Failed to load friends: ${escapeHTML(err.message)}</div>`;
+    }
+  }
+
+  function showFriendProfileModal(friend) {
+    if (viewFriendAvatar) viewFriendAvatar.textContent = friend.initials || 'KR';
+    if (viewFriendName) viewFriendName.textContent = friend.name || 'Friend';
+    if (viewFriendUsername) viewFriendUsername.textContent = '@' + (friend.username || '');
+    if (viewFriendStatus) {
+      viewFriendStatus.textContent = friend.profile?.status
+        ? `"${friend.profile.status}"`
+        : '"Listening to The Kaavish..."';
+    }
+    if (viewFriendSinger) viewFriendSinger.textContent = friend.profile?.favSinger || '-';
+    if (viewFriendSong) viewFriendSong.textContent = friend.profile?.favSong || '-';
+
+    if (btnInviteFriendToMehfil) {
+      btnInviteFriendToMehfil.onclick = async () => {
+        closeModal('friendProfileModal');
+        openModal('collabModal');
+        if (!window.roomSync.roomId) {
+          try {
+            await window.roomSync.createRoom(true);
+            showToast(`✨ Mehfil #${window.roomSync.roomId} created for you and ${friend.name}!`);
+          } catch (e) {}
+        }
+      };
+    }
+
+    openModal('friendProfileModal');
+  }
+
+  // Initialize auth manager from stored token
+  if (window.authManager) {
+    window.authManager.init().catch(() => {});
+  }
+
+  // -------------------------------------------------------------------------
   // Mehfil • Listen Together in Sync (Collab Room UI Controller)
   // -------------------------------------------------------------------------
   const btnOpenCollab = document.getElementById('btnOpenCollab');
@@ -751,11 +1108,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const roomSyncTag = document.getElementById('roomSyncTag');
 
   const collabInactiveView = document.getElementById('collabInactiveView');
+  const collabKnockingView = document.getElementById('collabKnockingView');
   const collabActiveView = document.getElementById('collabActiveView');
+  const checkPrivateRoom = document.getElementById('checkPrivateRoom');
   const btnCreateRoom = document.getElementById('btnCreateRoom');
   const btnJoinRoom = document.getElementById('btnJoinRoom');
   const joinRoomForm = document.getElementById('joinRoomForm');
   const joinRoomCodeInput = document.getElementById('joinRoomCodeInput');
+  const btnCancelKnock = document.getElementById('btnCancelKnock');
 
   const displayRoomCode = document.getElementById('displayRoomCode');
   const displayMemberCount = document.getElementById('displayMemberCount');
@@ -768,14 +1128,22 @@ document.addEventListener('DOMContentLoaded', () => {
   btnOpenCollab?.addEventListener('click', () => openModal('collabModal'));
   activeRoomNavPill?.addEventListener('click', () => openModal('collabModal'));
 
-  // Create room
+  // Create room (supports private / account approval mode)
   btnCreateRoom?.addEventListener('click', async () => {
+    const isPrivate = checkPrivateRoom ? checkPrivateRoom.checked : false;
+
+    if (isPrivate && (!window.authManager || !window.authManager.isLoggedIn)) {
+      showToast('🔒 Please sign in to create a private friend Mehfil');
+      openModal('authModal');
+      return;
+    }
+
     btnCreateRoom.disabled = true;
     const origHTML = btnCreateRoom.innerHTML;
     btnCreateRoom.innerHTML = '<span>Creating Mehfil...</span>';
     try {
-      const res = await window.roomSync.createRoom();
-      showToast(`✨ Mehfil #${res.roomId} created! Copy or share the code.`);
+      const res = await window.roomSync.createRoom(isPrivate);
+      showToast(`✨ Mehfil #${res.roomId} created! ${isPrivate ? 'Guests will knock for your approval.' : 'Share the code.'}`);
     } catch (err) {
       showToast('❌ ' + (err.message || 'Failed to create room'));
     } finally {
@@ -784,7 +1152,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Join room
+  // Join room (handles direct join, ACCOUNT_REQUIRED, and KNOCK_REQUIRED)
   async function handleJoinSubmit() {
     const code = joinRoomCodeInput?.value?.trim();
     if (!code) {
@@ -803,6 +1171,46 @@ document.addEventListener('DOMContentLoaded', () => {
       showToast(`✨ Joined Mehfil #${res.roomId}! Audio synchronized.`);
       if (joinRoomCodeInput) joinRoomCodeInput.value = '';
     } catch (err) {
+      if (err.code === 'ACCOUNT_REQUIRED') {
+        showToast('🔒 This is a private Mehfil. Please sign in or register to join.');
+        openModal('authModal');
+        return;
+      }
+
+      if (err.code === 'KNOCK_REQUIRED') {
+        // Switch to knocking waiting view
+        if (collabInactiveView) collabInactiveView.style.display = 'none';
+        if (collabKnockingView) collabKnockingView.style.display = 'block';
+        showToast('🚪 Knocking at the door... Waiting for host approval.');
+
+        try {
+          await window.roomSync.knockRoom(code);
+          const pollRes = await window.roomSync.pollKnockStatus(code);
+
+          if (pollRes.status === 'approved') {
+            showToast('✨ Host allowed your entry! Joining Mehfil...');
+            await window.roomSync.joinRoom(code);
+            if (collabKnockingView) collabKnockingView.style.display = 'none';
+            if (joinRoomCodeInput) joinRoomCodeInput.value = '';
+            // Refresh friends since host approved
+            if (window.authManager && window.authManager.isLoggedIn) {
+              window.authManager.getFriends();
+            }
+          } else if (pollRes.status === 'declined') {
+            showToast('🚫 Host declined the join request.');
+            if (collabKnockingView) collabKnockingView.style.display = 'none';
+            if (collabInactiveView) collabInactiveView.style.display = 'block';
+          }
+        } catch (pollErr) {
+          if (pollErr.message !== 'Knock cancelled') {
+            showToast('❌ ' + (pollErr.message || 'Knock request timed out'));
+          }
+          if (collabKnockingView) collabKnockingView.style.display = 'none';
+          if (collabInactiveView) collabInactiveView.style.display = 'block';
+        }
+        return;
+      }
+
       showToast('❌ ' + (err.message || 'Could not join room'));
     } finally {
       if (btnJoinRoom) {
@@ -816,6 +1224,64 @@ document.addEventListener('DOMContentLoaded', () => {
   joinRoomForm?.addEventListener('submit', (e) => {
     e.preventDefault();
     handleJoinSubmit();
+  });
+
+  // Cancel Knock button
+  btnCancelKnock?.addEventListener('click', () => {
+    window.roomSync.cancelKnock();
+    if (collabKnockingView) collabKnockingView.style.display = 'none';
+    if (collabInactiveView) collabInactiveView.style.display = 'block';
+    showToast('Knock request cancelled');
+  });
+
+  // Host Knock Received Event (SSE live notification)
+  window.addEventListener('roomknockreceived', (e) => {
+    const applicant = e.detail;
+    if (!applicant) return;
+    currentKnockApplicant = applicant;
+
+    if (knockApplicantAvatar) knockApplicantAvatar.textContent = applicant.initials || 'KR';
+    if (knockApplicantName) knockApplicantName.textContent = applicant.name || 'Soul Listener';
+    if (knockApplicantUsername) knockApplicantUsername.textContent = '@' + (applicant.username || 'user');
+    if (knockApplicantStatus) {
+      knockApplicantStatus.textContent = applicant.profile?.status
+        ? `"${applicant.profile.status}"`
+        : '"Listening to The Kaavish..."';
+    }
+    if (knockApplicantSinger) knockApplicantSinger.textContent = applicant.profile?.favSinger || '-';
+    if (knockApplicantSong) knockApplicantSong.textContent = applicant.profile?.favSong || '-';
+
+    openModal('knockModal');
+    showToast(`🚪 ${applicant.name} (@${applicant.username}) is knocking at your Mehfil!`);
+  });
+
+  // Host Allow & Add Friend
+  btnKnockAllow?.addEventListener('click', async () => {
+    if (!currentKnockApplicant || !window.roomSync.roomId) return;
+    const applicant = currentKnockApplicant;
+    try {
+      await window.roomSync.respondToKnock(window.roomSync.roomId, applicant.userId, true);
+      closeModal('knockModal');
+      showToast(`✓ Allowed ${applicant.name}! You are now Soul Friends.`);
+      if (window.authManager && window.authManager.isLoggedIn) {
+        window.authManager.getFriends();
+      }
+    } catch (err) {
+      showToast('❌ ' + (err.message || 'Failed to respond to knock'));
+    }
+  });
+
+  // Host Decline Knock
+  btnKnockDecline?.addEventListener('click', async () => {
+    if (!currentKnockApplicant || !window.roomSync.roomId) return;
+    const applicant = currentKnockApplicant;
+    try {
+      await window.roomSync.respondToKnock(window.roomSync.roomId, applicant.userId, false);
+      closeModal('knockModal');
+      showToast(`Declined request from ${applicant.name}.`);
+    } catch (err) {
+      showToast('❌ ' + (err.message || 'Failed to respond to knock'));
+    }
   });
 
   // Copy room code
@@ -873,21 +1339,14 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('roomstatechange', (e) => {
     const detail = e.detail;
     if (detail.active) {
-      if (activeRoomNavPill) {
-        activeRoomNavPill.style.display = 'inline-flex';
-      }
-      if (activeRoomNavText) {
-        activeRoomNavText.textContent = `Mehfil #${detail.roomId}`;
-      }
-      if (roomSyncTag) {
-        roomSyncTag.style.display = 'inline-flex';
-      }
-      if (collabNavText) {
-        collabNavText.textContent = 'In Mehfil';
-      }
+      if (activeRoomNavPill) activeRoomNavPill.style.display = 'inline-flex';
+      if (activeRoomNavText) activeRoomNavText.textContent = `Mehfil #${detail.roomId}`;
+      if (roomSyncTag) roomSyncTag.style.display = 'inline-flex';
+      if (collabNavText) collabNavText.textContent = 'In Mehfil';
       btnOpenCollab?.classList.add('in-room');
 
       if (collabInactiveView) collabInactiveView.style.display = 'none';
+      if (collabKnockingView) collabKnockingView.style.display = 'none';
       if (collabActiveView) collabActiveView.style.display = 'block';
 
       if (displayRoomCode) displayRoomCode.textContent = detail.roomId;
@@ -905,6 +1364,7 @@ document.addEventListener('DOMContentLoaded', () => {
       btnOpenCollab?.classList.remove('in-room');
 
       if (collabInactiveView) collabInactiveView.style.display = 'block';
+      if (collabKnockingView) collabKnockingView.style.display = 'none';
       if (collabActiveView) collabActiveView.style.display = 'none';
     }
   });

@@ -1,0 +1,66 @@
+{
+  "usr_1792440370292_od8bs": {
+    "id": "usr_1792440370292_od8bs",
+    "name": "Anuj Jha",
+    "username": "anuj21",
+    "passwordHash": "f21a6d2c6ac02cc16b6b589934eec2c046fcb2dbfb78e7f7d1ff35b26d767ad4531f37cde9ee88bf138d656a99226dcbb6307cc4a2a53519b4b217516ca3e75f",
+    "salt": "2f91ed2eb653d231a85eb67896b3cde5",
+    "initials": "AJ",
+    "createdAt": 1792440370292,
+    "profile": {
+      "favSinger": "Jaffer Zaidi",
+      "favSong": "Faasle",
+      "status": "Acoustic calm"
+    },
+    "friends": [
+      "usr_1792440430191_1i7m4"
+    ]
+  },
+  "usr_1792440430191_1i7m4": {
+    "id": "usr_1792440430191_1i7m4",
+    "name": "Rohan Verma",
+    "username": "rohan99",
+    "passwordHash": "008fcbe2c961f00aaa8927531160f86a04c9b20150b7f7279729309799dbfd14283c815fb165579cc3b898fa6c79e453743528e37654220ecff07d4c0b9498d3",
+    "salt": "e06f4e01acad1070819ed26a32e0c545",
+    "initials": "RV",
+    "createdAt": 1792440430191,
+    "profile": {
+      "favSinger": "Maaz Maudood",
+      "favSong": "Bachpan",
+      "status": "Lost in chords"
+    },
+    "friends": [
+      "usr_1792440370292_od8bs"
+    ]
+  },
+  "usr_1792441156094_5fh9v": {
+    "id": "usr_1792441156094_5fh9v",
+    "name": "Anuj Jha",
+    "username": "jhaanuj21",
+    "passwordHash": "be162e74902e5532741e1cb6b75d316d2650fa2c85d493d199426f7d92b32152da5a9df4706cb1e968c2e97164d548cefa211619459c4dd9771e461eb0b46c40",
+    "salt": "5c3d921ec890afa58a1f809b278b9f0a",
+    "initials": "AJ",
+    "createdAt": 1792441156094,
+    "profile": {
+      "favSinger": "Arijit Singh",
+      "favSong": "Faasle",
+      "status": "Singing in the Rain"
+    },
+    "friends": []
+  },
+  "usr_1792441283124_q41o8": {
+    "id": "usr_1792441283124_q41o8",
+    "name": "Anuja Kumari",
+    "username": "jhaanuja06",
+    "passwordHash": "f28f3e37bb568edba40830d730597c91f4674d46ab969a1438d3eda1f8b19d02529ce18abb4b0c14db3231f1946197bc1434f44e438477f2c30e70c2aec1a144",
+    "salt": "e30409e330b4f593f8d99e6ef6cbd408",
+    "initials": "AK",
+    "createdAt": 1792441283124,
+    "profile": {
+      "favSinger": "Arijit",
+      "favSong": "Mitwa",
+      "status": "Lost in the Rain"
+    },
+    "friends": []
+  }
+}
