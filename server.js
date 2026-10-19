@@ -85,12 +85,17 @@ function generateRoomId() {
 
 function broadcastToRoom(room, eventName, payload, excludeMemberId = null) {
   room.lastActive = Date.now();
-  const dataStr = `event: ${eventName}\ndata: ${JSON.stringify(payload)}\n\n`;
+  const envelope = {
+    ...payload,
+    serverTime: Date.now()
+  };
+  const dataStr = `event: ${eventName}\ndata: ${JSON.stringify(envelope)}\n\n`;
   for (const [memberId, member] of room.members.entries()) {
     if (excludeMemberId && memberId === excludeMemberId) continue;
     if (member.res && !member.res.writableEnded) {
       try {
         member.res.write(dataStr);
+        if (typeof member.res.flush === 'function') member.res.flush();
       } catch (err) {
         console.error('Error writing SSE to member:', err);
       }
@@ -111,11 +116,16 @@ function pruneInactiveRooms() {
 setInterval(pruneInactiveRooms, 60000);
 
 const server = http.createServer((req, res) => {
+  // Disable Nagle's algorithm for zero network packet buffering latency
+  if (req.socket && req.socket.setNoDelay) {
+    try { req.socket.setNoDelay(true); } catch (e) {}
+  }
+
   // CORS & caching headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+  res.setHeader('Cache-Control', 'no-cache, no-transform, must-revalidate');
 
   if (req.method === 'OPTIONS') {
     res.writeHead(204);
@@ -124,6 +134,13 @@ const server = http.createServer((req, res) => {
   }
 
   let safePath = decodeURI(req.url.split('?')[0]);
+
+  // High-precision server clock calibration endpoint
+  if (safePath === '/api/time') {
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=UTF-8' });
+    res.end(JSON.stringify({ serverTime: Date.now() }));
+    return;
+  }
 
   // Live active listeners heartbeat API
   if (safePath === '/api/heartbeat' || safePath === '/api/listeners') {
@@ -257,16 +274,19 @@ const server = http.createServer((req, res) => {
         const isPlaying = Boolean(state.isPlaying);
         const currentTime = (typeof state.currentTime === 'number') ? state.currentTime : 0;
 
+        const now = Date.now();
         const newRoom = {
           id: roomId,
           hostId: memberId,
-          createdAt: Date.now(),
-          lastActive: Date.now(),
+          createdAt: now,
+          lastActive: now,
           state: {
             trackIndex,
             isPlaying,
             currentTime,
-            updatedAt: Date.now()
+            anchorPosition: currentTime,
+            anchorServerTime: now,
+            updatedAt: now
           },
           members: new Map()
         };
@@ -279,6 +299,7 @@ const server = http.createServer((req, res) => {
           roomId,
           memberId,
           isHost: true,
+          serverTime: now,
           state: newRoom.state
         }));
       } catch (err) {
@@ -308,13 +329,15 @@ const server = http.createServer((req, res) => {
           return;
         }
 
-        const memberId = 'm_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now();
-        room.lastActive = Date.now();
+        const now = Date.now();
+        const memberId = 'm_' + Math.random().toString(36).substring(2, 9) + '_' + now;
+        room.lastActive = now;
 
-        // Calculate accurate elapsed playback position
-        let estTime = room.state.currentTime;
+        // Calculate accurate elapsed playback position from anchor
+        let estTime = room.state.anchorPosition !== undefined ? room.state.anchorPosition : room.state.currentTime;
         if (room.state.isPlaying) {
-          const elapsed = (Date.now() - room.state.updatedAt) / 1000;
+          const anchorTime = room.state.anchorServerTime || room.state.updatedAt;
+          const elapsed = (now - anchorTime) / 1000;
           estTime += Math.max(0, elapsed);
         }
 
@@ -324,9 +347,16 @@ const server = http.createServer((req, res) => {
           roomId: room.id,
           memberId,
           isHost: false,
+          serverTime: now,
           state: {
             ...room.state,
             currentTime: estTime
+          },
+          anchor: {
+            trackIndex: room.state.trackIndex,
+            isPlaying: room.state.isPlaying,
+            anchorPosition: room.state.anchorPosition !== undefined ? room.state.anchorPosition : estTime,
+            anchorServerTime: room.state.anchorServerTime || now
           },
           membersCount: room.members.size + 1
         }));
@@ -350,9 +380,11 @@ const server = http.createServer((req, res) => {
       return;
     }
 
-    let estTime = room.state.currentTime;
+    const now = Date.now();
+    let estTime = room.state.anchorPosition !== undefined ? room.state.anchorPosition : room.state.currentTime;
     if (room.state.isPlaying) {
-      const elapsed = (Date.now() - room.state.updatedAt) / 1000;
+      const anchorTime = room.state.anchorServerTime || room.state.updatedAt;
+      const elapsed = (now - anchorTime) / 1000;
       estTime += Math.max(0, elapsed);
     }
 
@@ -360,6 +392,7 @@ const server = http.createServer((req, res) => {
     res.end(JSON.stringify({
       success: true,
       roomId: room.id,
+      serverTime: now,
       state: { ...room.state, currentTime: estTime },
       membersCount: room.members.size
     }));
@@ -380,13 +413,15 @@ const server = http.createServer((req, res) => {
       return;
     }
 
-    // Set up SSE response headers
+    // Set up SSE response headers with zero buffering
     res.writeHead(200, {
       'Content-Type': 'text/event-stream; charset=UTF-8',
       'Cache-Control': 'no-cache, no-transform',
       'Connection': 'keep-alive',
+      'X-Accel-Buffering': 'no',
       'Access-Control-Allow-Origin': '*'
     });
+    if (typeof res.flushHeaders === 'function') res.flushHeaders();
     res.write(': connected\n\n');
 
     const isHost = (memberId === room.hostId);
@@ -401,10 +436,11 @@ const server = http.createServer((req, res) => {
     room.members.set(memberId, member);
     room.lastActive = Date.now();
 
-    // Send initial snapshot to joining client
-    let estTime = room.state.currentTime;
+    const now = Date.now();
+    let estTime = room.state.anchorPosition !== undefined ? room.state.anchorPosition : room.state.currentTime;
     if (room.state.isPlaying) {
-      const elapsed = (Date.now() - room.state.updatedAt) / 1000;
+      const anchorTime = room.state.anchorServerTime || room.state.updatedAt;
+      const elapsed = (now - anchorTime) / 1000;
       estTime += Math.max(0, elapsed);
     }
 
@@ -413,9 +449,16 @@ const server = http.createServer((req, res) => {
       roomId: room.id,
       memberId,
       isHost,
+      serverTime: now,
       state: {
         ...room.state,
         currentTime: estTime
+      },
+      anchor: {
+        trackIndex: room.state.trackIndex,
+        isPlaying: room.state.isPlaying,
+        anchorPosition: room.state.anchorPosition !== undefined ? room.state.anchorPosition : estTime,
+        anchorServerTime: room.state.anchorServerTime || now
       },
       membersCount: room.members.size
     };
@@ -481,38 +524,54 @@ const server = http.createServer((req, res) => {
           return;
         }
 
-        // Update server room state
+        const now = Date.now();
+
+        // Update server room state with master anchor timeline
         if (action === 'PLAY') {
           room.state.isPlaying = true;
-          if (typeof data.currentTime === 'number') room.state.currentTime = data.currentTime;
+          room.state.anchorPosition = typeof data.currentTime === 'number' ? data.currentTime : 0;
+          room.state.anchorServerTime = now;
           if (typeof data.trackIndex === 'number') room.state.trackIndex = data.trackIndex;
-          room.state.updatedAt = Date.now();
+          room.state.currentTime = room.state.anchorPosition;
+          room.state.updatedAt = now;
         } else if (action === 'PAUSE') {
           room.state.isPlaying = false;
-          if (typeof data.currentTime === 'number') room.state.currentTime = data.currentTime;
-          room.state.updatedAt = Date.now();
+          room.state.anchorPosition = typeof data.currentTime === 'number' ? data.currentTime : 0;
+          room.state.anchorServerTime = now;
+          room.state.currentTime = room.state.anchorPosition;
+          room.state.updatedAt = now;
         } else if (action === 'SEEK') {
-          if (typeof data.currentTime === 'number') room.state.currentTime = data.currentTime;
-          room.state.updatedAt = Date.now();
+          room.state.anchorPosition = typeof data.currentTime === 'number' ? data.currentTime : 0;
+          room.state.anchorServerTime = now;
+          room.state.currentTime = room.state.anchorPosition;
+          room.state.updatedAt = now;
         } else if (action === 'TRACK_CHANGE') {
           if (typeof data.trackIndex === 'number') room.state.trackIndex = data.trackIndex;
-          room.state.currentTime = (typeof data.currentTime === 'number') ? data.currentTime : 0;
+          room.state.anchorPosition = typeof data.currentTime === 'number' ? data.currentTime : 0;
+          room.state.anchorServerTime = now;
+          room.state.currentTime = room.state.anchorPosition;
           room.state.isPlaying = data.autoPlay !== false;
-          room.state.updatedAt = Date.now();
+          room.state.updatedAt = now;
         }
 
-        room.lastActive = Date.now();
+        room.lastActive = now;
 
-        // Broadcast action to all other members in the room
+        // Broadcast action with anchor timeline snapshot
         broadcastToRoom(room, 'sync_action', {
           action,
           data,
           senderId: memberId,
-          timestamp: Date.now()
+          timestamp: now,
+          anchor: {
+            trackIndex: room.state.trackIndex,
+            isPlaying: room.state.isPlaying,
+            anchorPosition: room.state.anchorPosition,
+            anchorServerTime: room.state.anchorServerTime
+          }
         }, memberId);
 
         res.writeHead(200, { 'Content-Type': 'application/json; charset=UTF-8' });
-        res.end(JSON.stringify({ success: true }));
+        res.end(JSON.stringify({ success: true, serverTime: now }));
       } catch (err) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: false, error: 'Invalid action payload' }));

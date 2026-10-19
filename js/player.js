@@ -1003,6 +1003,9 @@ class KaavishMusicPlayer {
           onStateChange: (event) => {
             if (event.data === YT.PlayerState.PLAYING) {
               this.setPlayingState(true);
+              if (window.roomSync && window.roomSync.isActive()) {
+                window.roomSync.onPlayerStatePlaying();
+              }
             } else if (event.data === YT.PlayerState.PAUSED) {
               // If tab is hidden (user switched apps or locked screen), keep playing
               if (document.hidden && this.isPlaying) {
@@ -1046,9 +1049,13 @@ class KaavishMusicPlayer {
 
     const handleSeek = (clientX) => {
       if (!this.progressTrackEl) return;
+      if (window.roomSync) window.roomSync.isUserSeeking = true;
       const rect = this.progressTrackEl.getBoundingClientRect();
       const clickRatio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
       this.seekTo(clickRatio);
+      setTimeout(() => {
+        if (window.roomSync) window.roomSync.isUserSeeking = false;
+      }, 400);
     };
 
     this.progressTrackEl?.addEventListener('click', (e) => handleSeek(e.clientX));
