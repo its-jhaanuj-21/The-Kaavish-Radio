@@ -53,6 +53,12 @@
 - A persistent community wall where listeners share thoughts, poetic couplets, and personal memories tied to the music.
 - Synchronized in real time via the backend API (`/api/notes`) with optimistic local storage fallback.
 
+### 📻 Mehfil • Real-Time Synchronized Listening (Listen Together)
+- **Synchronized Audio Playback**: Enables two or more listeners across the world to tune in together in acoustic harmony.
+- **Unique 6-Digit Room Code**: Generate private session codes (e.g. `582914`) or share direct 1-click invite links (`?room=582914`).
+- **Sub-Second Latency Compensation**: Automatically adjusts for network transmission latency so both devices play on the exact beat.
+- **Collaborative Sync**: Play, pause, timeline seeks, and track selections sync seamlessly across all connected devices in real time via Server-Sent Events (SSE).
+
 ### 👥 Real-Time Active Listener Counter
 - Live presence tracking via lightweight session heartbeats (`/api/heartbeat`).
 - Displays the actual count of concurrent souls currently in the sanctuary across the world.

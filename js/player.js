@@ -1095,18 +1095,55 @@ class KaavishMusicPlayer {
     }
   }
 
-  playTrack() {
+  getCurrentTime() {
+    if (this.ytReady && this.ytPlayer && this.ytPlayer.getCurrentTime) {
+      try {
+        return this.ytPlayer.getCurrentTime() || 0;
+      } catch (e) {
+        return 0;
+      }
+    }
+    return 0;
+  }
+
+  seekToTime(seconds) {
+    if (this.ytReady && this.ytPlayer && this.ytPlayer.seekTo) {
+      try {
+        this.ytPlayer.seekTo(seconds, true);
+        const dur = this.ytPlayer.getDuration ? this.ytPlayer.getDuration() : 0;
+        if (dur > 0) {
+          this.updateTimelineDisplay(seconds, dur);
+        }
+      } catch (e) {}
+    }
+  }
+
+  playTrack(isFromSync = false) {
     if (this.ytReady && this.ytPlayer) {
       this.ytPlayer.playVideo();
     }
     this.setPlayingState(true);
+
+    if (!isFromSync && window.roomSync && window.roomSync.isActive() && !window.roomSync.isApplyingRemoteSync) {
+      window.roomSync.broadcastAction('PLAY', {
+        trackIndex: this.currentIndex,
+        currentTime: this.getCurrentTime()
+      });
+    }
   }
 
-  pauseTrack() {
+  pauseTrack(isFromSync = false) {
     if (this.ytReady && this.ytPlayer) {
       this.ytPlayer.pauseVideo();
     }
     this.setPlayingState(false);
+
+    if (!isFromSync && window.roomSync && window.roomSync.isActive() && !window.roomSync.isApplyingRemoteSync) {
+      window.roomSync.broadcastAction('PAUSE', {
+        trackIndex: this.currentIndex,
+        currentTime: this.getCurrentTime()
+      });
+    }
   }
 
   updateMediaSession(track) {
@@ -1130,7 +1167,7 @@ class KaavishMusicPlayer {
       navigator.mediaSession.setActionHandler('nexttrack', () => this.nextTrack());
       navigator.mediaSession.setActionHandler('seekto', (details) => {
         if (details.seekTime !== undefined && this.ytReady && this.ytPlayer) {
-          this.ytPlayer.seekTo(details.seekTime, true);
+          this.seekToTime(details.seekTime);
         }
       });
     } catch (err) {
@@ -1173,7 +1210,7 @@ class KaavishMusicPlayer {
     }
   }
 
-  loadTrack(index, autoPlay = true) {
+  loadTrack(index, autoPlay = true, isFromSync = false) {
     this.currentIndex = (index + this.playlist.length) % this.playlist.length;
     const track = this.playlist[this.currentIndex];
 
@@ -1191,6 +1228,14 @@ class KaavishMusicPlayer {
 
     // Dispatch event for playlist modal to highlight current song
     window.dispatchEvent(new CustomEvent('trackchange', { detail: { index: this.currentIndex } }));
+
+    if (!isFromSync && window.roomSync && window.roomSync.isActive() && !window.roomSync.isApplyingRemoteSync) {
+      window.roomSync.broadcastAction('TRACK_CHANGE', {
+        trackIndex: this.currentIndex,
+        autoPlay: autoPlay,
+        currentTime: 0
+      });
+    }
   }
 
   nextTrack() {
@@ -1215,13 +1260,20 @@ class KaavishMusicPlayer {
     }
   }
 
-  seekTo(ratio) {
+  seekTo(ratio, isFromSync = false) {
     if (this.ytReady && this.ytPlayer && this.ytPlayer.getDuration) {
       const dur = this.ytPlayer.getDuration();
       if (dur > 0) {
         const seekTime = dur * ratio;
         this.ytPlayer.seekTo(seekTime, true);
         this.updateTimelineDisplay(seekTime, dur);
+
+        if (!isFromSync && window.roomSync && window.roomSync.isActive() && !window.roomSync.isApplyingRemoteSync) {
+          window.roomSync.broadcastAction('SEEK', {
+            trackIndex: this.currentIndex,
+            currentTime: seekTime
+          });
+        }
       }
     }
   }

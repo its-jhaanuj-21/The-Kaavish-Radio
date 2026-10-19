@@ -74,6 +74,10 @@
           <span class="live-dot"></span>
           <span id="liveListenerCount">1 listening</span>
         </div>
+        <div class="pill-btn active-room-pill" id="activeRoomNavPill" style="display: none;" title="Active Mehfil Room">
+          <span class="live-room-dot"></span>
+          <span id="activeRoomNavText">Mehfil #------</span>
+        </div>
         <button class="pill-btn pwa-install-btn" id="btnInstallApp" title="Download & Install The Kaavish Radio (TKR) on your device" style="display: none;">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -95,6 +99,15 @@
       </div>
 
       <div class="top-bar-right">
+        <button class="pill-btn collab-pill-btn" id="btnOpenCollab" title="Mehfil • Listen Together in Sync">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"></path>
+            <circle cx="9" cy="7" r="4"></circle>
+            <path d="M23 21v-2a4 4 0 00-3-3.87"></path>
+            <path d="M16 3.13a4 4 0 010 7.75"></path>
+          </svg>
+          <span id="collabNavText">Mehfil</span>
+        </button>
         <button class="pill-btn" id="btnOpenPlaylist" title="View all Kaavish tracks">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M9 18V5l12-2v13M9 9l12-2M6 18a3 3 0 11-6 0 3 3 0 016 0zm12-2a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -211,7 +224,13 @@
             <div class="vinyl-center-dot"></div>
           </div>
           <div class="track-text-meta">
-            <div class="track-title" id="currentTitle">Faasle</div>
+            <div class="track-title-row">
+              <span class="track-title" id="currentTitle">Faasle</span>
+              <span id="roomSyncTag" class="room-sync-tag" style="display: none;" title="Playing in sync with Mehfil">
+                <span class="live-room-dot"></span>
+                <span>Synced</span>
+              </span>
+            </div>
             <div class="track-artist" id="currentArtist">The Kaavish & Quratulain Balouch • Coke Studio Season 10</div>
           </div>
         </div>
@@ -288,6 +307,109 @@
   <!-- ========================================================================
        Modals
        ======================================================================== -->
+
+  <!-- Mehfil / Collab Modal (Listen Together in Sync) -->
+  <div class="modal-backdrop" id="collabModal">
+    <div class="modal-card" style="max-width: 480px;">
+      <div class="modal-header">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.2">
+            <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"></path>
+            <circle cx="9" cy="7" r="4"></circle>
+            <path d="M23 21v-2a4 4 0 00-3-3.87"></path>
+            <path d="M16 3.13a4 4 0 010 7.75"></path>
+          </svg>
+          <h3 style="margin:0; font-family:'Cinzel', serif; letter-spacing:1px; color:#ffffff;">Mehfil • Listen Together</h3>
+        </div>
+        <button class="modal-close-btn" aria-label="Close modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="margin-bottom: 18px; font-size: 0.86rem; color: #d1c5b4; line-height: 1.55;">
+          Experience <em>The Kaavish</em> in acoustic sync with someone special. Create a private sanctuary room or join one with a 6-digit code so songs, plays, and pauses stay aligned in real time.
+        </p>
+
+        <!-- View 1: When NOT in an active room -->
+        <div id="collabInactiveView">
+          <div class="collab-actions-grid">
+            <!-- Create Room Box -->
+            <div class="collab-box create-box">
+              <div class="collab-box-icon">✨</div>
+              <div class="collab-box-title">Create Mehfil</div>
+              <div class="collab-box-desc">Generate a private 6-digit code and invite a friend</div>
+              <button class="action-pill-btn" id="btnCreateRoom" style="width: 100%; margin-top: 12px;">
+                <span>Start New Mehfil</span>
+              </button>
+            </div>
+
+            <!-- Join Room Box -->
+            <div class="collab-box join-box">
+              <div class="collab-box-icon">🔑</div>
+              <div class="collab-box-title">Join a Mehfil</div>
+              <div class="collab-box-desc">Enter the 6-digit room code shared with you</div>
+              <form id="joinRoomForm" onsubmit="return false;" style="margin-top: 12px;">
+                <div class="collab-input-row">
+                  <input type="text" id="joinRoomCodeInput" class="note-input" placeholder="e.g. 582914" maxlength="6" inputmode="numeric" pattern="[0-9]*" autocomplete="off" style="text-align: center; letter-spacing: 3px; font-weight: 700; font-size: 1.05rem;">
+                  <button type="submit" class="action-pill-btn" id="btnJoinRoom">
+                    <span>Join</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- View 2: When IN an active room -->
+        <div id="collabActiveView" style="display: none;">
+          <div class="active-room-card">
+            <div class="room-status-indicator">
+              <span class="live-room-dot"></span>
+              <span id="activeRoomStatusHeading">Connected in Mehfil</span>
+            </div>
+
+            <div class="room-code-display-wrap">
+              <div class="room-code-label">ROOM CODE</div>
+              <div class="room-code-digits" id="displayRoomCode">------</div>
+            </div>
+
+            <div class="room-meta-stats">
+              <span id="displayMemberCount">👥 1 soul connected</span>
+              <span class="meta-dot">•</span>
+              <span id="displayRoleBadge">Host</span>
+            </div>
+
+            <div class="room-actions-bar">
+              <button class="pill-btn copy-code-btn" id="btnCopyRoomCode" title="Copy 6-digit code">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+                <span id="copyCodeText">Copy Code</span>
+              </button>
+              <button class="pill-btn share-invite-btn" id="btnShareInviteLink" title="Share invite link">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13" />
+                </svg>
+                <span>Share Link</span>
+              </button>
+            </div>
+
+            <div class="sync-guarantee-note">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.2">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+              </svg>
+              <span>Playback is synchronized down to the exact second. Changing tracks, seeking, and play/pause will update all connected devices simultaneously.</span>
+            </div>
+
+            <button class="leave-room-btn" id="btnLeaveRoom">
+              Leave Mehfil
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
 
   <!-- Theme Selector Modal -->
   <div class="modal-backdrop" id="themeModal">
@@ -711,6 +833,7 @@
   <!-- Scripts -->
   <script src="js/ambient-audio.js"></script>
   <script src="js/rain-effect.js"></script>
+  <script src="js/room-sync.js"></script>
   <script src="js/player.js"></script>
   <script src="js/app.js"></script>
 </body>

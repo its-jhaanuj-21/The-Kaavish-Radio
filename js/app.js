@@ -739,6 +739,186 @@ document.addEventListener('DOMContentLoaded', () => {
       toastEl.classList.remove('show');
     }, 2800);
   }
+  window.showToast = showToast;
+
+  // -------------------------------------------------------------------------
+  // Mehfil • Listen Together in Sync (Collab Room UI Controller)
+  // -------------------------------------------------------------------------
+  const btnOpenCollab = document.getElementById('btnOpenCollab');
+  const collabNavText = document.getElementById('collabNavText');
+  const activeRoomNavPill = document.getElementById('activeRoomNavPill');
+  const activeRoomNavText = document.getElementById('activeRoomNavText');
+  const roomSyncTag = document.getElementById('roomSyncTag');
+
+  const collabInactiveView = document.getElementById('collabInactiveView');
+  const collabActiveView = document.getElementById('collabActiveView');
+  const btnCreateRoom = document.getElementById('btnCreateRoom');
+  const btnJoinRoom = document.getElementById('btnJoinRoom');
+  const joinRoomForm = document.getElementById('joinRoomForm');
+  const joinRoomCodeInput = document.getElementById('joinRoomCodeInput');
+
+  const displayRoomCode = document.getElementById('displayRoomCode');
+  const displayMemberCount = document.getElementById('displayMemberCount');
+  const displayRoleBadge = document.getElementById('displayRoleBadge');
+  const btnCopyRoomCode = document.getElementById('btnCopyRoomCode');
+  const copyCodeText = document.getElementById('copyCodeText');
+  const btnShareInviteLink = document.getElementById('btnShareInviteLink');
+  const btnLeaveRoom = document.getElementById('btnLeaveRoom');
+
+  btnOpenCollab?.addEventListener('click', () => openModal('collabModal'));
+  activeRoomNavPill?.addEventListener('click', () => openModal('collabModal'));
+
+  // Create room
+  btnCreateRoom?.addEventListener('click', async () => {
+    btnCreateRoom.disabled = true;
+    const origHTML = btnCreateRoom.innerHTML;
+    btnCreateRoom.innerHTML = '<span>Creating Mehfil...</span>';
+    try {
+      const res = await window.roomSync.createRoom();
+      showToast(`✨ Mehfil #${res.roomId} created! Copy or share the code.`);
+    } catch (err) {
+      showToast('❌ ' + (err.message || 'Failed to create room'));
+    } finally {
+      btnCreateRoom.disabled = false;
+      btnCreateRoom.innerHTML = origHTML;
+    }
+  });
+
+  // Join room
+  async function handleJoinSubmit() {
+    const code = joinRoomCodeInput?.value?.trim();
+    if (!code) {
+      showToast('⚠️ Please enter the 6-digit room code');
+      joinRoomCodeInput?.focus();
+      return;
+    }
+
+    if (btnJoinRoom) {
+      btnJoinRoom.disabled = true;
+      btnJoinRoom.innerHTML = '<span>Joining...</span>';
+    }
+
+    try {
+      const res = await window.roomSync.joinRoom(code);
+      showToast(`✨ Joined Mehfil #${res.roomId}! Audio synchronized.`);
+      if (joinRoomCodeInput) joinRoomCodeInput.value = '';
+    } catch (err) {
+      showToast('❌ ' + (err.message || 'Could not join room'));
+    } finally {
+      if (btnJoinRoom) {
+        btnJoinRoom.disabled = false;
+        btnJoinRoom.innerHTML = '<span>Join</span>';
+      }
+    }
+  }
+
+  btnJoinRoom?.addEventListener('click', handleJoinSubmit);
+  joinRoomForm?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    handleJoinSubmit();
+  });
+
+  // Copy room code
+  btnCopyRoomCode?.addEventListener('click', async () => {
+    if (!window.roomSync.roomId) return;
+    try {
+      await navigator.clipboard.writeText(window.roomSync.roomId);
+      if (copyCodeText) copyCodeText.textContent = 'Copied!';
+      showToast(`✓ Room Code ${window.roomSync.roomId} copied!`);
+      setTimeout(() => {
+        if (copyCodeText) copyCodeText.textContent = 'Copy Code';
+      }, 2500);
+    } catch (e) {
+      showToast(`Room Code: ${window.roomSync.roomId}`);
+    }
+  });
+
+  // Share invite link
+  btnShareInviteLink?.addEventListener('click', async () => {
+    if (!window.roomSync.roomId) return;
+    const inviteUrl = window.roomSync.getInviteLink();
+    const shareTitle = 'Join my Kaavish Radio Mehfil • Listen Together';
+    const shareText = `📻✨ Listen to The Kaavish with me in real-time acoustic sync!\nRoom Code: ${window.roomSync.roomId}\n\nJoin here:\n${inviteUrl}`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: shareTitle,
+          text: shareText,
+          url: inviteUrl
+        });
+        showToast('✨ Invite shared successfully!');
+        return;
+      } catch (err) {
+        if (err.name === 'AbortError') return;
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(shareText);
+      showToast('🔗 Invite message & link copied to clipboard!');
+    } catch (e) {
+      navigator.clipboard.writeText(inviteUrl);
+      showToast('🔗 Invite link copied to clipboard!');
+    }
+  });
+
+  // Leave room
+  btnLeaveRoom?.addEventListener('click', async () => {
+    await window.roomSync.leaveRoom();
+    showToast('👋 You have left the Mehfil');
+  });
+
+  // Room state change listener
+  window.addEventListener('roomstatechange', (e) => {
+    const detail = e.detail;
+    if (detail.active) {
+      if (activeRoomNavPill) {
+        activeRoomNavPill.style.display = 'inline-flex';
+      }
+      if (activeRoomNavText) {
+        activeRoomNavText.textContent = `Mehfil #${detail.roomId}`;
+      }
+      if (roomSyncTag) {
+        roomSyncTag.style.display = 'inline-flex';
+      }
+      if (collabNavText) {
+        collabNavText.textContent = 'In Mehfil';
+      }
+      btnOpenCollab?.classList.add('in-room');
+
+      if (collabInactiveView) collabInactiveView.style.display = 'none';
+      if (collabActiveView) collabActiveView.style.display = 'block';
+
+      if (displayRoomCode) displayRoomCode.textContent = detail.roomId;
+      if (displayMemberCount) {
+        const count = detail.membersCount;
+        displayMemberCount.textContent = `👥 ${count} ${count === 1 ? 'soul' : 'souls'} in sync`;
+      }
+      if (displayRoleBadge) {
+        displayRoleBadge.textContent = detail.isHost ? 'Host' : 'Listener';
+      }
+    } else {
+      if (activeRoomNavPill) activeRoomNavPill.style.display = 'none';
+      if (roomSyncTag) roomSyncTag.style.display = 'none';
+      if (collabNavText) collabNavText.textContent = 'Mehfil';
+      btnOpenCollab?.classList.remove('in-room');
+
+      if (collabInactiveView) collabInactiveView.style.display = 'block';
+      if (collabActiveView) collabActiveView.style.display = 'none';
+    }
+  });
+
+  // Auto-detect invite code from URL: ?room=123456
+  if (window.roomSync && window.roomSync.autoJoinCode) {
+    if (joinRoomCodeInput) {
+      joinRoomCodeInput.value = window.roomSync.autoJoinCode;
+    }
+    setTimeout(() => {
+      openModal('collabModal');
+      showToast(`🔑 Room code #${window.roomSync.autoJoinCode} detected! Tap Join to sync.`);
+    }, 600);
+  }
 
   // -------------------------------------------------------------------------
   // Progressive Web App (PWA) Registration & Install Prompt
